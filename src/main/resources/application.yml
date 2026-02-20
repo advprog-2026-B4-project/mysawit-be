@@ -1,0 +1,17 @@
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+
+spring:
+  application:
+    name: mysawit-be
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mysawit}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: validate # Database dikontrol manual oleh Flyway
+    show-sql: ${JPA_SHOW_SQL:false}
+  flyway:
+    enabled: true

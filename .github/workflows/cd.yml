@@ -1,12 +1,21 @@
 name: CD
 
-on: 
+on:
   workflow_call:
 
 jobs:
-  dummy:
+  cd-main:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Dummy step
-        run: echo "This is a dummy step for CD workflow triggered by successful CI workflow."
+      - name: Main branch step
+        run: echo "Deploying MAIN"
+
+  cd-staging:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Staging branch step
+        run: echo "Deploying STAGING"

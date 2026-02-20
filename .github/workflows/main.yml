@@ -1,0 +1,17 @@
+name: CI + CD
+
+on:
+  push:
+  pull_request:
+
+permissions: read-all
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  cd:
+    needs: ci
+    uses: ./.github/workflows/cd.yml
+    secrets: inherit

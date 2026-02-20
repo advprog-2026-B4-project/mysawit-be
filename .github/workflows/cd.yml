@@ -1,0 +1,12 @@
+name: CD
+
+on: 
+  workflow_call:
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Dummy step
+        run: echo "This is a dummy step for CD workflow triggered by successful CI workflow."

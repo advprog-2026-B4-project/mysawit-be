@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CoordinateDTO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

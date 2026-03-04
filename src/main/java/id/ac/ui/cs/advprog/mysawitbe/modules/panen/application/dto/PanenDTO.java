@@ -15,8 +15,10 @@ public record PanenDTO(
         UUID buruhId,
         String buruhName,
         UUID kebunId,
+        String description,
         int weight,
         String status,
+        String rejectionReason,
         List<PhotoDTO> photos,
         LocalDateTime timestamp
 ) {

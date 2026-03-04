@@ -23,12 +23,12 @@ import lombok.RequiredArgsConstructor;
 public class PanenCommandImpl implements PanenCommandUseCase {
 
     private final PanenRepositoryPort repositoryPort;
-    private final PanenMapperPort mapper; // MapStruct mapper dari infrastructure
+    private final PanenMapperPort mapper;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
-    public PanenDTO createPanen(UUID buruhId, String buruhName, UUID kebunId, int weight, List<String> photoUrls) {
+    public PanenDTO createPanen(UUID buruhId, String buruhName, UUID kebunId, String description, int weight, List<String> photoUrls) {
         LocalDateTime now = LocalDateTime.now();
 
         if (repositoryPort.existsByBuruhIdAndDate(buruhId, now.toLocalDate())) {
@@ -39,6 +39,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
                 buruhId, 
                 buruhName,
                 kebunId, 
+                description,
                 weight,
                 now,
                 photoUrls
@@ -52,17 +53,14 @@ public class PanenCommandImpl implements PanenCommandUseCase {
     public PanenDTO approvePanen(UUID panenId, UUID mandorId) {
         PanenDTO dto = repositoryPort.findById(panenId);
         if (dto == null) {
-            throw new EntityNotFoundException("Laporan panen tidak ditemukan");  // ← ganti ke EntityNotFoundException
+            throw new EntityNotFoundException("Laporan panen tidak ditemukan"); 
         }
 
-        // 2. Ubah DTO ke Domain untuk menjalankan Logika Bisnis
         Panen domainPanen = mapper.dtoToDomain(dto);
         domainPanen.approve();
 
-        // 3. Simpan Perubahan
         PanenDTO updatedDto = repositoryPort.save(mapper.toDTO(domainPanen));
 
-        // 4. Publish Event (Asinkron - Sesuai agent.md)
         eventPublisher.publishEvent(new PanenApprovedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),
@@ -79,17 +77,15 @@ public class PanenCommandImpl implements PanenCommandUseCase {
     public PanenDTO rejectPanen(UUID panenId, UUID mandorId, String reason) {
         PanenDTO dto = repositoryPort.findById(panenId);
         if (dto == null) {
-            throw new EntityNotFoundException("Laporan panen tidak ditemukan");  // ← ganti ke EntityNotFoundException
+            throw new EntityNotFoundException("Laporan panen tidak ditemukan");  
         }
 
         Panen domainPanen = mapper.dtoToDomain(dto);
         
-        // 2. Delegasi ke Domain: Reject dengan alasan (Metode Bisnis)
         domainPanen.reject(reason);
 
         PanenDTO updatedDto = repositoryPort.save(mapper.toDTO(domainPanen));
 
-        // 3. Publish Event untuk Modul Notifikasi
         eventPublisher.publishEvent(new PanenRejectedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),

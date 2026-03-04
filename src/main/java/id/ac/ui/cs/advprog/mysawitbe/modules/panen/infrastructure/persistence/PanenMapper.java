@@ -28,7 +28,6 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Mapping(target = "createdAt", source = "timestamp")
     @Mapping(target = "harvestDate", expression = "java(panen.getTimestamp().toLocalDate())")
-    @Mapping(target = "description", ignore = true)
     @Mapping(target = "photos", ignore = true)
     PanenEntity toEntity(Panen panen);
 

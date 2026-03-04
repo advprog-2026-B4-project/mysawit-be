@@ -9,17 +9,19 @@ public class Panen {
     private final UUID buruhId;
     private final String buruhName;
     private final UUID kebunId;
-    private final Integer weight; // Satuan Gram untuk presisi sesuai kesepakatan DTO tim
+    private final String description;
+    private final Integer weight; 
     private PanenStatus status;
     private String rejectionReason;
     private final LocalDateTime timestamp;
     private final List<PanenPhoto> photos;
 
-    public Panen(UUID panenId, UUID buruhId, String buruhName, UUID kebunId, Integer weight, PanenStatus status, String rejectionReason, LocalDateTime timestamp, List<PanenPhoto> photos) {
+    public Panen(UUID panenId, UUID buruhId, String buruhName, UUID kebunId, String description, Integer weight, PanenStatus status, String rejectionReason, LocalDateTime timestamp, List<PanenPhoto> photos) {
         this.panenId = panenId;
         this.buruhId = buruhId;
         this.buruhName = buruhName;
         this.kebunId = kebunId;
+        this.description = description;
         this.weight = weight;
         this.status = status;
         this.rejectionReason = rejectionReason;
@@ -29,14 +31,14 @@ public class Panen {
 
     public static Panen catatBaru(UUID buruhId, 
         String buruhName, 
-        UUID kebunId, Integer weight, 
+        UUID kebunId, String description, Integer weight, 
         LocalDateTime timestamp, List<String> photoUrls) {
         
             List<PanenPhoto> domainPhotos = photoUrls.stream()
             .map(PanenPhoto::create)
             .toList();
             
-            return new Panen(UUID.randomUUID(), buruhId, buruhName, kebunId, weight, PanenStatus.PENDING, null, timestamp, domainPhotos);
+            return new Panen(UUID.randomUUID(), buruhId, buruhName, kebunId, description, weight, PanenStatus.PENDING, null, timestamp, domainPhotos);
     }
 
     public void approve() {
@@ -92,5 +94,9 @@ public class Panen {
 
     public List<PanenPhoto> getPhotos() {
         return photos;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

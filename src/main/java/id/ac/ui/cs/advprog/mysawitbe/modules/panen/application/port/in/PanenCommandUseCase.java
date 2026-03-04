@@ -13,7 +13,7 @@ public interface PanenCommandUseCase {
      * Record a single harvest entry. One per buruh per day; enforced at use-case level.
      * Weight in grams. photoUrls are R2 storage URLs.
      */
-    PanenDTO createPanen(UUID buruhId, UUID kebunId, int weight, java.util.List<String> photoUrls);
+    PanenDTO createPanen(UUID buruhId, String buruhName, UUID kebunId, int weight, java.util.List<String> photoUrls);
 
     /**
      * Mandor approves a harvest record.

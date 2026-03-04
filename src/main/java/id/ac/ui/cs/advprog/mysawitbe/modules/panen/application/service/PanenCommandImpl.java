@@ -15,6 +15,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenComm
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenMapperPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -27,7 +28,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
     @Override
     @Transactional
-    public PanenDTO createPanen(UUID buruhId, UUID kebunId, int weight, List<String> photoUrls) {
+    public PanenDTO createPanen(UUID buruhId, String buruhName, UUID kebunId, int weight, List<String> photoUrls) {
         LocalDateTime now = LocalDateTime.now();
 
         if (repositoryPort.existsByBuruhIdAndDate(buruhId, now.toLocalDate())) {
@@ -35,9 +36,9 @@ public class PanenCommandImpl implements PanenCommandUseCase {
         }
 
         Panen domainPanen = Panen.catatBaru(
-                buruhId,
-                "Buruh Name", // TODO = pake dto nanti ya
-                kebunId,
+                buruhId, 
+                buruhName,
+                kebunId, 
                 weight,
                 now,
                 photoUrls
@@ -49,9 +50,10 @@ public class PanenCommandImpl implements PanenCommandUseCase {
     @Override
     @Transactional
     public PanenDTO approvePanen(UUID panenId, UUID mandorId) {
-        // 1. Ambil data (Port Out)
         PanenDTO dto = repositoryPort.findById(panenId);
-        if (dto == null) throw new IllegalArgumentException("Laporan panen tidak ditemukan");
+        if (dto == null) {
+            throw new EntityNotFoundException("Laporan panen tidak ditemukan");  // ← ganti ke EntityNotFoundException
+        }
 
         // 2. Ubah DTO ke Domain untuk menjalankan Logika Bisnis
         Panen domainPanen = mapper.dtoToDomain(dto);
@@ -76,7 +78,9 @@ public class PanenCommandImpl implements PanenCommandUseCase {
     @Transactional
     public PanenDTO rejectPanen(UUID panenId, UUID mandorId, String reason) {
         PanenDTO dto = repositoryPort.findById(panenId);
-        if (dto == null) throw new IllegalArgumentException("Laporan panen tidak ditemukan");
+        if (dto == null) {
+            throw new EntityNotFoundException("Laporan panen tidak ditemukan");  // ← ganti ke EntityNotFoundException
+        }
 
         Panen domainPanen = mapper.dtoToDomain(dto);
         

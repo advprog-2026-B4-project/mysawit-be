@@ -154,7 +154,14 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
         eventPublisher.publishEvent(new BuruhAssignedEvent(buruhId, mandorId));
     }
 
-    
+    @Override
+    public void unassignBuruhFromMandor(UUID buruhId) {
+        UserDTO buruh = getExistingUser(buruhId);
+        if (!UserRole.BURUH.name().equals(buruh.role())) {
+            throw new IllegalArgumentException("Target user is not a BURUH");
+        }
+        userRepository.removeBuruhMandorAssignment(buruhId);
+    }
 
     // Helper method
     private UserDTO getExistingUser(UUID userId) {

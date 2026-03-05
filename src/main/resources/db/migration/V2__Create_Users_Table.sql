@@ -23,6 +23,6 @@ VALUES (
     'admin',
     'admin@mysawit.id',
     'Admin Utama',
-    'AdminKelompok4',
+    '$2a$12$LcmKR1vpQaWK3GsKFBGbsex9f1IVbSnP5xOtoF7BT4E0.V7BqkXhS',
     'ADMIN'
 );

@@ -13,7 +13,7 @@ import java.util.UUID;
 @Service
 @Transactional(readOnly = true)
 public class UserQueryUseCaseImpl implements UserQueryUseCase {
-    
+
     private final UserRepositoryPort userRepository;
 
     public UserQueryUseCaseImpl(UserRepositoryPort userRepository) {
@@ -46,9 +46,24 @@ public class UserQueryUseCaseImpl implements UserQueryUseCase {
 
     @Override
     public List<UserDTO> listUsers(String roleFilter) {
+        return listUsers(roleFilter, null);
+    }
+
+    @Override
+    public List<UserDTO> listUsers(String roleFilter, String search) {
+        List<UserDTO> users;
         if (roleFilter == null || roleFilter.isBlank()) {
-            return userRepository.findAll();
+            users = userRepository.findAll();
+        } else {
+            users = userRepository.findByRole(roleFilter.toUpperCase());
         }
-        return userRepository.findByRole(roleFilter.toUpperCase());
+        if (search != null && !search.isBlank()) {
+            String q = search.toLowerCase();
+            users = users.stream()
+                    .filter(u -> u.name().toLowerCase().contains(q)
+                              || u.email().toLowerCase().contains(q))
+                    .toList();
+        }
+        return users;
     }
 }

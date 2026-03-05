@@ -34,4 +34,5 @@ public interface UserRepositoryPort {
     boolean existsById(UUID userId);
 
     void saveBuruhMandorAssignment(UUID buruhId, UUID mandorId);
+    void removeBuruhMandorAssignment(UUID buruhId);
 }

@@ -24,7 +24,6 @@ public class UserJpaAdapter implements UserRepositoryPort {
         User domain = mapper.toDomain(userDTO);
         domain.setHashedPassword(hashedPassword);
 
-        // Preserve userId on update (null = new entity)
         UserJpaEntity entity;
         if (userDTO.userId() != null) {
             entity = repository.findById(userDTO.userId())
@@ -99,6 +98,14 @@ public class UserJpaAdapter implements UserRepositoryPort {
     public void saveBuruhMandorAssignment(UUID buruhId, UUID mandorId) {
         repository.findById(buruhId).ifPresent(e -> {
             e.setMandorId(mandorId);
+            repository.save(e);
+        });
+    }
+
+    @Override
+    public void removeBuruhMandorAssignment(UUID buruhId) {
+        repository.findById(buruhId).ifPresent(e -> {
+            e.setMandorId(null);
             repository.save(e);
         });
     }

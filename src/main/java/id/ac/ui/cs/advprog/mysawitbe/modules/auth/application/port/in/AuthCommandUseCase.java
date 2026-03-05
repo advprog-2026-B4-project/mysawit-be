@@ -60,4 +60,6 @@ public interface AuthCommandUseCase {
      * Publishes BuruhAssignedEvent after successful assignment.
      */
     void assignBuruhToMandor(UUID buruhId, UUID mandorId);
+
+    void unassignBuruhFromMandor(UUID buruhId);
 }

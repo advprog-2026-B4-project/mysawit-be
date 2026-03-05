@@ -24,4 +24,6 @@ public interface UserQueryUseCase {
      * roleFilter: nullable; if null returns all.
      */
     List<UserDTO> listUsers(String roleFilter);
+
+    List<UserDTO> listUsers(String roleFilter, String search);
 }

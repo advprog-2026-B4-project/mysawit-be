@@ -38,7 +38,7 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                                   JwtService jwtService,
                                   PasswordEncoder passwordEncoder,
                                   ApplicationEventPublisher eventPublisher,
-                                  @Value("${GOOGLE_CLIENT_ID}") String googleClientId) {
+                                  @Value("${GOOGLE_CLIENT_ID:placeholder-client-id}") String googleClientId) {
         this.userRepository   = userRepository;
         this.oauth2Port       = oauth2Port;
         this.jwtService       = jwtService;

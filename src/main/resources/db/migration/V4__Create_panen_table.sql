@@ -1,6 +1,6 @@
 CREATE TABLE harvest_reports (
     id UUID PRIMARY KEY,
-    buruh_id UUID NOT NULL REFERENCES users(id),
+    buruh_id UUID NOT NULL REFERENCES users(user_id),
     kebun_id UUID NOT NULL REFERENCES gardens(id),
     weight int NOT NULL,
     description TEXT,

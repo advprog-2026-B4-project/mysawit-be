@@ -37,7 +37,7 @@ src/main/java/id/ac/ui/cs/advprog/mysawitbe/
 ### Storage
 - Use `StoragePort` (port/out) for file operations. The Cloudflare R2 adapter is the concrete implementation.
 - All upload URLs returned as `String` (pre-signed or public CDN URL).
-
+cd 
 ### Authentication & Authorization
 - **Dual-Auth:** Email/password (Spring Security) + Google OAuth2.
 - JWT issued after successful login; use Spring Security filter chain for stateless auth.

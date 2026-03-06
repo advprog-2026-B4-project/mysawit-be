@@ -63,7 +63,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    /** POST /api/users/{buruhId}/assign-mandor/{mandorId} — Assign buruh ke mandor */
+    /** POST /api/users/{buruhId}/assign-mandor/{mandorId} - Assign buruh ke mandor */
     @PostMapping("/{buruhId}/assign-mandor/{mandorId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> assignBuruhToMandor(
@@ -73,7 +73,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    /** DELETE /api/users/{buruhId}/assign-mandor — Unassign buruh dari mandor */
+    /** DELETE /api/users/{buruhId}/assign-mandor - Unassign buruh dari mandor */
     @DeleteMapping("/{buruhId}/assign-mandor")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> unassignBuruh(
@@ -82,7 +82,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    /** PUT /api/users/{buruhId}/assign-mandor/{mandorId} — Reassign buruh ke mandor lain */
+    /** PUT /api/users/{buruhId}/assign-mandor/{mandorId} - Reassign buruh ke mandor lain */
     @PutMapping("/{buruhId}/assign-mandor/{mandorId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> reassignBuruh(

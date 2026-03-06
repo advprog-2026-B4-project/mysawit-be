@@ -14,9 +14,12 @@ import java.io.IOException;
 public class AuthController {
 
     private final AuthCommandUseCase authCommandUseCase;
+    private final String frontendUrl;
 
-    public AuthController(AuthCommandUseCase authCommandUseCase) {
+    public AuthController(AuthCommandUseCase authCommandUseCase,
+                          @org.springframework.beans.factory.annotation.Value("${app.frontend.url}") String frontendUrl) {
         this.authCommandUseCase = authCommandUseCase;
+        this.frontendUrl = frontendUrl;
     }
 
     /** POST /api/auth/login */
@@ -36,14 +39,14 @@ public class AuthController {
         return ResponseEntity.status(201).body(ApiResponse.success(user));
     }
 
-    /** GET /api/auth/oauth2/url — returns Google OAuth2 authorization URL */
+    /** GET /api/auth/oauth2/url - returns Google OAuth2 authorization URL */
     @GetMapping("/oauth2/url")
     public ResponseEntity<ApiResponse<GoogleOAuthUrlDTO>> getOAuthUrl() {
         GoogleOAuthUrlDTO dto = authCommandUseCase.getGoogleOAuthUrl();
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
-    /** GET /api/auth/oauth2/callback — Google redirects here */
+    /** GET /api/auth/oauth2/callback - Google redirects here */
     @GetMapping("/oauth2/callback")
     public void oauthCallback(
             @RequestParam String code,
@@ -53,11 +56,11 @@ public class AuthController {
         AuthTokenDTO token = authCommandUseCase.handleGoogleOAuthCallback(
                 callback.code(), callback.state());
 
-        String frontendUrl = "http://localhost:3000/auth/callback"
+        String redirectUrl = frontendUrl + "/auth/callback"
                 + "?token=" + token.accessToken()
                 + "&role=" + token.role();
 
-        response.sendRedirect(frontendUrl);
+        response.sendRedirect(redirectUrl);
     }
 
     /** POST /api/auth/logout */

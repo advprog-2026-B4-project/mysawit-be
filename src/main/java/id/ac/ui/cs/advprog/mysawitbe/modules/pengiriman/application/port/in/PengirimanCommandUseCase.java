@@ -35,7 +35,7 @@ public interface PengirimanCommandUseCase {
 
     /**
      * Admin processes delivery: full approve, partial accept, or reject.
-     * acceptedWeight: actual accepted weight in grams (0 = full reject).
+     * acceptedWeight: actual accepted weight in kilograms (0 = full reject).
      * Publishes PengirimanProcessedByAdminEvent.
      */
     PengirimanDTO adminProcessDelivery(UUID pengirimanId, UUID adminId, int acceptedWeight, String status, String reason);

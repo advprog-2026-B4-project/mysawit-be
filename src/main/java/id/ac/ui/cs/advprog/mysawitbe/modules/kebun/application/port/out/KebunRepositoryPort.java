@@ -40,4 +40,8 @@ public interface KebunRepositoryPort {
     void assignSupir(UUID supirId, UUID kebunId);
 
     void moveSupir(UUID supirId, UUID newKebunId);
+
+    UUID findKebunIdByMandorId(UUID mandorId);
+
+    void moveMandor(UUID mandorId, UUID newKebunId);
 }

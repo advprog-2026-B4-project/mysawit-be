@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in;
 
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 
 import java.time.LocalDate;
@@ -18,6 +19,11 @@ public interface PengirimanQueryUseCase {
      * Supir's delivery history, filterable by date.
      */
     List<PengirimanDTO> listDeliveriesBySupir(UUID supirId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Mandor views truck drivers assigned in their kebun, with optional name filter.
+     */
+    List<AssignedSupirDTO> listAssignedSupirForMandor(UUID mandorId, String searchNama);
 
     /**
      * Mandor's active deliveries view.

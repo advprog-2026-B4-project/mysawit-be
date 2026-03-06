@@ -1,7 +1,9 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,5 +85,45 @@ class PengirimanControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("End date cannot be before start date"));
+    }
+
+    @Test
+    void listAssignedSupirForMandor_returns200WithFilteredData() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        AssignedSupirDTO supir = new AssignedSupirDTO(
+                UUID.randomUUID(),
+                "ega",
+                "Ega Jawa",
+                "ega@example.com"
+        );
+
+        when(queryUseCase.listAssignedSupirForMandor(mandorId, "ega"))
+                .thenReturn(List.of(supir));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/supir")
+                        .requestAttr("userId", mandorId)
+                        .param("searchNama", "ega"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].supirId").value(supir.supirId().toString()))
+                .andExpect(jsonPath("$.data[0].name").value("Ega Jawa"));
+    }
+
+    @Test
+    void listAssignedSupirForMandor_dependencyUnavailable_returns503() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+
+        when(queryUseCase.listAssignedSupirForMandor(mandorId, null))
+                .thenThrow(new KebunQueryDependencyUnavailableException(
+                        "Kebun query dependency is unavailable. Integrasi modul kebun belum siap."
+                ));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/supir")
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(
+                        "Kebun query dependency is unavailable. Integrasi modul kebun belum siap."
+                ));
     }
 }

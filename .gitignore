@@ -38,4 +38,4 @@ out/
 ### Environment Variables ###
 .env
 .env.local
-.env.*.local".env"
+.env.*.local".env" 

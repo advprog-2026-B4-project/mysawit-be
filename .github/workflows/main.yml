@@ -7,6 +7,12 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: read
+  checks: read
+  pull-requests: read
+  statuses: read
+  security-events: read
+  id-token: read
 
 jobs:
   ci:

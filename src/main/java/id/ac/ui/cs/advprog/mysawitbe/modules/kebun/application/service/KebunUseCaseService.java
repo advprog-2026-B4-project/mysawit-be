@@ -40,9 +40,19 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     public KebunDTO createKebun(String nama, String kode, int luas, List<CoordinateDTO> coordinates) {
+        // Trim input
+        nama = (nama != null) ? nama.trim() : null;
+        kode = (kode != null) ? kode.trim() : null;
+
         validateBasic(nama, kode, luas, coordinates);
         KebunGeometry.validateSquareCorners(coordinates);
         validateNoOverlap(null, coordinates);
+
+        // Check for duplicate kode
+        List<KebunDTO> existing = kebunRepository.findByNamaContainingOrKodeContaining("", kode);
+        if (!existing.isEmpty()) {
+            throw new IllegalStateException("Kode kebun sudah digunakan");
+        }
 
         KebunDTO dto = new KebunDTO(null, nama, kode, luas, coordinates);
         return kebunRepository.save(dto);
@@ -203,24 +213,9 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDTO> getBuruhList(UUID kebunId) {
-        if (kebunId == null) throw new IllegalArgumentException("kebunId wajib diisi");
-        ensureKebunExists(kebunId);
-
-        UUID mandorId = kebunRepository.findMandorIdByKebunId(kebunId);
-        if (mandorId == null) return List.of();
-
-        List<UserDTO> buruh = userQueryUseCase.getBuruhByMandorId(mandorId);
-        return buruh.stream()
-                .sorted(Comparator.comparing(UserDTO::name, String.CASE_INSENSITIVE_ORDER))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<KebunDTO> listKebun(String searchNama, String searchKode) {
-        String nama = (searchNama == null) ? "" : searchNama;
-        String kode = (searchKode == null) ? "" : searchKode;
+        String nama = (searchNama == null) ? "" : searchNama.trim();
+        String kode = (searchKode == null) ? "" : searchKode.trim();
 
         if (nama.isBlank() && kode.isBlank()) {
             return kebunRepository.findAll();

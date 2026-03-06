@@ -1,4 +1,9 @@
+api:
+  kebun:
+    path: /api/kebun
+
 app:
+  name: MySawit
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
   google:

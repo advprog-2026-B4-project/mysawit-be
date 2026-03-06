@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.kebun.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.AssignPersonRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO;
@@ -59,6 +60,9 @@ public class KebunController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN_UTAMA')")
     public ResponseEntity<ApiResponse<KebunDTO>> create(@Valid @RequestBody CreateKebunRequestDTO body) {
+        if (body.coordinates() == null || body.coordinates().size() != 4) {
+            throw new IllegalArgumentException("Coordinates must contain exactly 4 points");
+        }
         log.info("Creating new kebun with nama: {}, kode: {}", body.nama(), body.kode());
         KebunDTO created = kebunCommandUseCase.createKebun(
                 body.nama(),
@@ -186,4 +190,10 @@ public class KebunController {
     }
 
     private record MandorResponse(UUID mandorId) {}
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Invalid UUID format"));
+    }
 }

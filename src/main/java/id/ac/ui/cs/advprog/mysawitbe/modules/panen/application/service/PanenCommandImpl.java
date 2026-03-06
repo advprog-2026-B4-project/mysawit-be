@@ -8,6 +8,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenRejectedEvent;
@@ -25,19 +27,23 @@ public class PanenCommandImpl implements PanenCommandUseCase {
     private final PanenRepositoryPort repositoryPort;
     private final PanenMapperPort mapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserQueryUseCase userQueryUseCase;
 
     @Override
     @Transactional
-    public PanenDTO createPanen(UUID buruhId, String buruhName, UUID kebunId, String description, int weight, List<String> photoUrls) {
+    public PanenDTO createPanen(UUID buruhId, UUID kebunId, String description, int weight, List<String> photoUrls) {
         LocalDateTime now = LocalDateTime.now();
 
         if (repositoryPort.existsByBuruhIdAndDate(buruhId, now.toLocalDate())) {
             throw new IllegalStateException("Pencatatan gagal: Batas harian tercapai (maksimal 1 kali sehari).");
         }
 
+        UserDTO buruh = userQueryUseCase.getUserById(buruhId);
+        String buruhName = buruh.name();
+
         Panen domainPanen = Panen.catatBaru(
                 buruhId, 
-                buruhName,
+                buruhName, // Gunakan nama asli dari database Auth
                 kebunId, 
                 description,
                 weight,

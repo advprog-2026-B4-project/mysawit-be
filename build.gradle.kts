@@ -88,3 +88,18 @@ tasks.jacocoTestReport {
         xml.required.set(true)
     }
 }
+
+tasks.register<JavaExec>("changeAdminPassword") {
+    group       = "admin"
+    description = "Change the admin account password. Pass new password via -Ppassword=<value>."
+    classpath   = sourceSets["main"].runtimeClasspath
+    mainClass   = "id.ac.ui.cs.advprog.mysawitbe.tools.ChangeAdminPassword"
+
+    val newPassword = project.findProperty("password")?.toString() ?: ""
+    args = listOf(newPassword)
+
+    // Forward the same DB env vars the app uses
+    environment("DB_URL",      System.getenv("DB_URL")      ?: "jdbc:postgresql://localhost:5432/mysawit")
+    environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")
+    environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
+}

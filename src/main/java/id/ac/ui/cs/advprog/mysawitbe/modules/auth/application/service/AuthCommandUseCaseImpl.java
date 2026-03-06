@@ -22,8 +22,9 @@ import java.util.UUID;
 @Transactional
 public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
 
-    private static final String GOOGLE_REDIRECT_URI = "http://localhost:8080/api/auth/oauth2/callback";
-    private static final Duration OAUTH_STATE_TTL   = Duration.ofMinutes(10);
+    private static final Duration OAUTH_STATE_TTL = Duration.ofMinutes(10);
+
+    private final String googleRedirectUri;
 
     private final UserRepositoryPort  userRepository;
     private final OAuth2Port          oauth2Port;
@@ -38,13 +39,15 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                                   JwtService jwtService,
                                   PasswordEncoder passwordEncoder,
                                   ApplicationEventPublisher eventPublisher,
-                                  @Value("${GOOGLE_CLIENT_ID:placeholder-client-id}") String googleClientId) {
+                                  @Value("${GOOGLE_CLIENT_ID:placeholder-client-id}") String googleClientId,
+                                  @Value("${app.google.redirect-uri}") String googleRedirectUri) {
         this.userRepository   = userRepository;
         this.oauth2Port       = oauth2Port;
         this.jwtService       = jwtService;
         this.passwordEncoder  = passwordEncoder;
         this.eventPublisher   = eventPublisher;
         this.googleClientId   = googleClientId;
+        this.googleRedirectUri = googleRedirectUri;
     }
 
     @Override
@@ -96,13 +99,13 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
         if (!oauth2Port.validateAndConsumeState(state)) {
             throw new IllegalArgumentException("Invalid or expired OAuth state");
         }
-        Map<String, Object> tokens = oauth2Port.exchangeCodeForTokens(code, GOOGLE_REDIRECT_URI);
+        Map<String, Object> tokens = oauth2Port.exchangeCodeForTokens(code, googleRedirectUri);
         String email = (String) tokens.get("email");
         String name  = (String) tokens.get("name");
 
         UserDTO user = userRepository.findByEmail(email);
         if (user == null) {
-            // Auto-register as BURUH — admin can re-assign role later
+            // Auto-register as BURUH - admin can re-assign role later
             String username = email.split("@")[0];
             UserDTO newUser = new UserDTO(null, username, name, UserRole.BURUH.name(), email);
             user = userRepository.save(newUser, null);
@@ -181,7 +184,7 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
     private String buildGoogleAuthUrl(String state) {
         return "https://accounts.google.com/o/oauth2/v2/auth" +
                "?client_id=" + googleClientId +
-               "&redirect_uri=" + GOOGLE_REDIRECT_URI +
+               "&redirect_uri=" + googleRedirectUri +
                "&response_type=code" +
                "&scope=openid%20email%20profile" +
                "&state=" + state;

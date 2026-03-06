@@ -7,6 +7,8 @@ jobs:
   cd-main:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
       - name: Checkout
@@ -34,6 +36,8 @@ jobs:
   cd-staging:
     if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
       - name: Checkout

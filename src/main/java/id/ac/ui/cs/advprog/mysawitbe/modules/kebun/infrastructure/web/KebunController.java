@@ -71,36 +71,38 @@ public class KebunController {
         return ResponseEntity.ok(ApiResponse.success(new MandorResponse(mandorId)));
     }
 
-    /** GET /api/kebun/{kebunId}/supir?search=... */
+    /** GET /api/kebun/{kebunId}/supir?nama=... */
     @GetMapping("/{kebunId}/supir")
-    public ResponseEntity<ApiResponse<List<UserDTO>>> getSupir(
+    public ResponseEntity<ApiResponse<List<UserDTO>>> getSupirList(
             @PathVariable UUID kebunId,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false, name = "nama") String searchNama
     ) {
-        List<UserDTO> list = kebunQueryUseCase.getSupirList(kebunId);
-        if (search != null && !search.isBlank()) {
-            String q = search.toLowerCase();
-            list = list.stream()
-                    .filter(u -> u.name() != null && u.name().toLowerCase().contains(q))
-                    .toList();
+        List<UserDTO> supirList = kebunQueryUseCase.getSupirList(kebunId);
+
+        if (searchNama != null && !searchNama.isBlank()) {
+            supirList = supirList.stream()
+                    .filter(u -> u.name().toLowerCase().contains(searchNama.toLowerCase()))
+                    .collect(Collectors.toList());
         }
-        return ResponseEntity.ok(ApiResponse.success(list));
+
+        return ResponseEntity.ok(ApiResponse.success(supirList));
     }
 
-    /** GET /api/kebun/{kebunId}/buruh?search=... */
+    /** GET /api/kebun/{kebunId}/buruh?nama=... */
     @GetMapping("/{kebunId}/buruh")
-    public ResponseEntity<ApiResponse<List<UserDTO>>> getBuruh(
+    public ResponseEntity<ApiResponse<List<UserDTO>>> getBuruhList(
             @PathVariable UUID kebunId,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false, name = "nama") String searchNama
     ) {
-        List<UserDTO> list = kebunQueryUseCase.getBuruhList(kebunId);
-        if (search != null && !search.isBlank()) {
-            String q = search.toLowerCase();
-            list = list.stream()
-                    .filter(u -> u.name() != null && u.name().toLowerCase().contains(q))
-                    .toList();
+        List<UserDTO> buruhList = kebunQueryUseCase.getBuruhList(kebunId);
+
+        if (searchNama != null && !searchNama.isBlank()) {
+            buruhList = buruhList.stream()
+                    .filter(u -> u.name().toLowerCase().contains(searchNama.toLowerCase()))
+                    .collect(Collectors.toList());
         }
-        return ResponseEntity.ok(ApiResponse.success(list));
+
+        return ResponseEntity.ok(ApiResponse.success(buruhList));
     }
 
     /** POST /api/kebun/{kebunId}/assign/mandor body: AssignPersonRequestDTO */

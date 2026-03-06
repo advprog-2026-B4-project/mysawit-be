@@ -26,7 +26,6 @@ public class PanenController {
             @RequestAttribute("userId") UUID buruhId, 
             @Valid @RequestBody CreatePanenRequestDTO request) {
         
-        // Cukup teruskan buruhId dari JWT dan payload request
         PanenDTO responseData = commandUseCase.createPanen(
                 buruhId,
                 request.kebunId(),

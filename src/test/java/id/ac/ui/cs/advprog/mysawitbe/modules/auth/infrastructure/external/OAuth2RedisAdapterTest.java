@@ -10,7 +10,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OAuth2RedisAdapter")
@@ -21,9 +24,11 @@ class OAuth2RedisAdapterTest {
 
     OAuth2RedisAdapter adapter;
 
+    private static final String STATE_PREFIX = "oauth2:state:";
+
     @BeforeEach
     void setUp() {
-        // TODO: wire mocks and instantiate adapter
+        adapter = new OAuth2RedisAdapter(redisTemplate, "google-client-id", "google-client-secret");
     }
 
     @Nested
@@ -33,19 +38,20 @@ class OAuth2RedisAdapterTest {
         @Test
         @DisplayName("returns non-blank string")
         void returnsNonBlankString() {
-            fail("not yet implemented");
+            assertThat(adapter.generateState()).isNotBlank();
         }
 
         @Test
         @DisplayName("consecutive calls return different states")
         void consecutiveCallsAreUnique() {
-            fail("not yet implemented");
+            assertThat(adapter.generateState()).isNotEqualTo(adapter.generateState());
         }
 
         @Test
         @DisplayName("output is URL-safe base64 (no +, /, =)")
         void outputIsUrlSafe() {
-            fail("not yet implemented");
+            String state = adapter.generateState();
+            assertThat(state).doesNotContain("+", "/", "=");
         }
     }
 
@@ -53,16 +59,29 @@ class OAuth2RedisAdapterTest {
     @DisplayName("storeState")
     class StoreState {
 
+        @BeforeEach
+        void setUp() {
+            when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        }
+
         @Test
         @DisplayName("returns true and stores key with correct prefix and TTL")
         void storesKeyWithPrefixAndTtl() {
-            fail("not yet implemented");
+            boolean result = adapter.storeState("my-state", Duration.ofMinutes(10));
+
+            assertThat(result).isTrue();
+            verify(valueOps).set(STATE_PREFIX + "my-state", "1", Duration.ofMinutes(10));
         }
 
         @Test
         @DisplayName("Redis exception returns false instead of propagating")
         void redisExceptionReturnsFalse() {
-            fail("not yet implemented");
+            doThrow(new RuntimeException("Redis down"))
+                    .when(valueOps).set(any(), any(), any(Duration.class));
+
+            boolean result = adapter.storeState("state", Duration.ofMinutes(10));
+
+            assertThat(result).isFalse();
         }
     }
 
@@ -71,21 +90,33 @@ class OAuth2RedisAdapterTest {
     class ValidateAndConsumeState {
 
         @Test
-        @DisplayName("state exists returns true and deletes key")
+        @DisplayName("state exists – returns true and deletes key")
         void existingStateReturnsTrueAndDeletes() {
-            fail("not yet implemented");
+            when(redisTemplate.hasKey(STATE_PREFIX + "valid")).thenReturn(true);
+
+            boolean result = adapter.validateAndConsumeState("valid");
+
+            assertThat(result).isTrue();
+            verify(redisTemplate).delete(STATE_PREFIX + "valid");
         }
 
         @Test
-        @DisplayName("state does not exist returns false, no delete")
+        @DisplayName("state does not exist – returns false, no delete")
         void missingStateReturnsFalseNoDelete() {
-            fail("not yet implemented");
+            when(redisTemplate.hasKey(STATE_PREFIX + "missing")).thenReturn(false);
+
+            boolean result = adapter.validateAndConsumeState("missing");
+
+            assertThat(result).isFalse();
+            verify(redisTemplate, never()).delete(anyString());
         }
 
         @Test
-        @DisplayName("hasKey returns null treated as false")
+        @DisplayName("hasKey returns null – treated as false, returns false")
         void nullHasKeyReturnsFalse() {
-            fail("not yet implemented");
+            when(redisTemplate.hasKey(STATE_PREFIX + "x")).thenReturn(null);
+
+            assertThat(adapter.validateAndConsumeState("x")).isFalse();
         }
     }
 }

@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.service;
 
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.out.UserRepositoryPort;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,7 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserQueryUseCaseImpl")
@@ -19,9 +25,12 @@ class UserQueryUseCaseImplTest {
 
     UserQueryUseCaseImpl service;
 
+    final UUID userId   = UUID.randomUUID();
+    final UUID mandorId = UUID.randomUUID();
+
     @BeforeEach
     void setUp() {
-        // TODO: instantiate service with mocked repository
+        service = new UserQueryUseCaseImpl(userRepository);
     }
 
     @Nested
@@ -29,15 +38,22 @@ class UserQueryUseCaseImplTest {
     class GetUserById {
 
         @Test
-        @DisplayName("found returns user DTO")
+        @DisplayName("found – returns user DTO")
         void foundReturnsUser() {
-            fail("not yet implemented");
+            UserDTO user = new UserDTO(userId, "u", "Name", "BURUH", "u@t.com");
+            when(userRepository.findById(userId)).thenReturn(user);
+
+            assertThat(service.getUserById(userId)).isEqualTo(user);
         }
 
         @Test
-        @DisplayName("not found throws EntityNotFoundException with userId")
+        @DisplayName("not found – throws EntityNotFoundException with userId")
         void notFoundThrowsWithUserId() {
-            fail("not yet implemented");
+            when(userRepository.findById(userId)).thenReturn(null);
+
+            assertThatThrownBy(() -> service.getUserById(userId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining(userId.toString());
         }
     }
 
@@ -48,90 +64,147 @@ class UserQueryUseCaseImplTest {
         @Test
         @DisplayName("returns role string of found user")
         void returnsRoleString() {
-            fail("not yet implemented");
+            UserDTO user = new UserDTO(userId, "u", "Name", "MANDOR", "u@t.com");
+            when(userRepository.findById(userId)).thenReturn(user);
+
+            assertThat(service.getUserRole(userId)).isEqualTo("MANDOR");
         }
 
         @Test
-        @DisplayName("user not found throws EntityNotFoundException")
+        @DisplayName("user not found – throws EntityNotFoundException")
         void userNotFoundThrows() {
-            fail("not yet implemented");
+            when(userRepository.findById(userId)).thenReturn(null);
+
+            assertThatThrownBy(() -> service.getUserRole(userId))
+                    .isInstanceOf(EntityNotFoundException.class);
         }
     }
 
     @Test
-    @DisplayName("verifyUserExists delegates true/false to repository")
+    @DisplayName("verifyUserExists – delegates true/false to repository")
     void verifyUserExistsDelegates() {
-        fail("not yet implemented");
+        when(userRepository.existsById(userId)).thenReturn(true);
+        assertThat(service.verifyUserExists(userId)).isTrue();
+
+        when(userRepository.existsById(userId)).thenReturn(false);
+        assertThat(service.verifyUserExists(userId)).isFalse();
     }
 
     @Test
-    @DisplayName("getBuruhByMandorId returns list from repository")
+    @DisplayName("getBuruhByMandorId – returns list from repository")
     void getBuruhByMandorIdReturnsList() {
-        fail("not yet implemented");
+        List<UserDTO> list = List.of(
+                new UserDTO(UUID.randomUUID(), "b1", "Buruh 1", "BURUH", "b1@t.com"),
+                new UserDTO(UUID.randomUUID(), "b2", "Buruh 2", "BURUH", "b2@t.com")
+        );
+        when(userRepository.findBuruhByMandorId(mandorId)).thenReturn(list);
+
+        assertThat(service.getBuruhByMandorId(mandorId)).hasSize(2);
     }
 
     @Nested
     @DisplayName("listUsers")
     class ListUsers {
 
+        final List<UserDTO> all = List.of(
+                new UserDTO(UUID.randomUUID(), "a",  "Admin User",  "ADMIN",  "a@t.com"),
+                new UserDTO(UUID.randomUUID(), "b",  "Buruh One",   "BURUH",  "b@t.com"),
+                new UserDTO(UUID.randomUUID(), "m",  "Mandor Budi", "MANDOR", "budi@t.com")
+        );
+
         @Test
-        @DisplayName("null filter returns all users from repository")
+        @DisplayName("null filter – returns all users from repository")
         void nullFilterReturnsAll() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            assertThat(service.listUsers(null)).hasSize(3);
+            verify(userRepository).findAll();
+            verify(userRepository, never()).findByRole(any());
         }
 
         @Test
-        @DisplayName("blank filter returns all users from repository")
+        @DisplayName("blank filter – returns all users from repository")
         void blankFilterReturnsAll() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            assertThat(service.listUsers("  ")).hasSize(3);
         }
 
         @Test
         @DisplayName("role filter applied correctly")
         void roleFilterApplied() {
-            fail("not yet implemented");
+            when(userRepository.findByRole("BURUH")).thenReturn(List.of(all.get(1)));
+
+            List<UserDTO> result = service.listUsers("BURUH");
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).role()).isEqualTo("BURUH");
         }
 
         @Test
         @DisplayName("role filter uppercased before repository query")
         void roleFilterUppercased() {
-            fail("not yet implemented");
+            when(userRepository.findByRole("MANDOR")).thenReturn(List.of());
+
+            service.listUsers("mandor");
+
+            verify(userRepository).findByRole("MANDOR");
         }
 
         @Test
         @DisplayName("search filters by name (case-insensitive)")
         void searchFiltersByName() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            List<UserDTO> result = service.listUsers(null, "budi");
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).name()).isEqualTo("Mandor Budi");
         }
 
         @Test
         @DisplayName("search filters by email")
         void searchFiltersByEmail() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            List<UserDTO> result = service.listUsers(null, "b@t.com");
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).email()).isEqualTo("b@t.com");
         }
 
         @Test
         @DisplayName("search is case-insensitive")
         void searchIsCaseInsensitive() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            assertThat(service.listUsers(null, "BURUH ONE")).hasSize(1);
         }
 
         @Test
         @DisplayName("blank search returns full list without filtering")
         void blankSearchReturnsAll() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            assertThat(service.listUsers(null, "   ")).hasSize(3);
         }
 
         @Test
         @DisplayName("role and search filters combined")
         void roleAndSearchCombined() {
-            fail("not yet implemented");
+            when(userRepository.findByRole("BURUH")).thenReturn(List.of(all.get(1)));
+
+            List<UserDTO> result = service.listUsers("BURUH", "One");
+
+            assertThat(result).hasSize(1);
         }
 
         @Test
         @DisplayName("no search match returns empty list")
         void noMatchReturnsEmpty() {
-            fail("not yet implemented");
+            when(userRepository.findAll()).thenReturn(all);
+
+            assertThat(service.listUsers(null, "zzznomatch")).isEmpty();
         }
     }
 }

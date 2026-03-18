@@ -1,5 +1,8 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.auth.infrastructure.persistance;
 
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.User;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -8,7 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserJpaAdapter")
@@ -19,9 +27,39 @@ class UserJpaAdapterTest {
 
     UserJpaAdapter adapter;
 
+    final UUID   userId   = UUID.randomUUID();
+    final UUID   mandorId = UUID.randomUUID();
+    final String email    = "user@test.com";
+    final String hash     = "$2a$hash";
+
+    UserJpaEntity entity() {
+        UserJpaEntity e = new UserJpaEntity();
+        e.setUserId(userId);
+        e.setUsername("user");
+        e.setEmail(email);
+        e.setName("Name");
+        e.setPassword(hash);
+        e.setRole("BURUH");
+        return e;
+    }
+
+    User domain() {
+        User u = new User();
+        u.setUserId(userId);
+        u.setUsername("user");
+        u.setEmail(email);
+        u.setName("Name");
+        u.setHashedPassword(hash);
+        u.setRole(UserRole.BURUH);
+        return u;
+    }
+
+    UserDTO dto()    { return new UserDTO(userId, "user", "Name", "BURUH", email); }
+    UserDTO dtoNew() { return new UserDTO(null,   "user", "Name", "BURUH", email); }
+
     @BeforeEach
     void setUp() {
-        // TODO: instantiate adapter with mocked dependencies
+        adapter = new UserJpaAdapter(repository, mapper);
     }
 
     @Nested
@@ -29,27 +67,83 @@ class UserJpaAdapterTest {
     class Save {
 
         @Test
-        @DisplayName("new user (null userId) creates and persists entity")
+        @DisplayName("new user (null userId) – creates and persists entity")
         void newUserCreatesAndPersistsEntity() {
-            fail("not yet implemented");
+            UserDTO input  = dtoNew();
+            User    dom    = domain(); dom.setUserId(null);
+            UserJpaEntity ent   = entity();
+            UserJpaEntity saved = entity();
+
+            when(mapper.toDomain(input)).thenReturn(dom);
+            when(mapper.toEntity(dom)).thenReturn(ent);
+            when(repository.save(ent)).thenReturn(saved);
+            when(mapper.toDomain(saved)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            UserDTO result = adapter.save(input, hash);
+
+            assertThat(result.userId()).isEqualTo(userId);
+            verify(repository).save(ent);
         }
 
         @Test
-        @DisplayName("existing user updates name, email, role on found entity")
+        @DisplayName("existing user – updates name, email, role on found entity")
         void existingUserUpdatesFields() {
-            fail("not yet implemented");
+            UserDTO input    = dto();
+            User    dom      = domain();
+            UserJpaEntity existing = entity();
+            UserJpaEntity saved    = entity();
+
+            when(mapper.toDomain(input)).thenReturn(dom);
+            when(mapper.toEntity(dom)).thenReturn(existing);
+            when(repository.findById(userId)).thenReturn(Optional.of(existing));
+            when(repository.save(existing)).thenReturn(saved);
+            when(mapper.toDomain(saved)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            UserDTO result = adapter.save(input, hash);
+
+            assertThat(result).isEqualTo(dto());
+            verify(repository).save(existing);
         }
 
         @Test
-        @DisplayName("existing user not in DB falls back to mapper entity")
+        @DisplayName("existing user not in DB – falls back to mapper entity")
         void existingUserNotFoundFallsBack() {
-            fail("not yet implemented");
+            UserDTO input    = dto();
+            User    dom      = domain();
+            UserJpaEntity fallback = entity();
+            UserJpaEntity saved    = entity();
+
+            when(mapper.toDomain(input)).thenReturn(dom);
+            when(mapper.toEntity(dom)).thenReturn(fallback);
+            when(repository.findById(userId)).thenReturn(Optional.empty());
+            when(repository.save(fallback)).thenReturn(saved);
+            when(mapper.toDomain(saved)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            assertThat(adapter.save(input, hash)).isNotNull();
         }
 
         @Test
         @DisplayName("null hashedPassword does not overwrite existing password")
         void nullPasswordIsNotWrittenToEntity() {
-            fail("not yet implemented");
+            UserDTO input    = dto();
+            User    dom      = domain();
+            UserJpaEntity existing = entity();
+            existing.setPassword("old-hash");
+            UserJpaEntity saved = entity();
+
+            when(mapper.toDomain(input)).thenReturn(dom);
+            when(mapper.toEntity(dom)).thenReturn(existing);
+            when(repository.findById(userId)).thenReturn(Optional.of(existing));
+            when(repository.save(existing)).thenReturn(saved);
+            when(mapper.toDomain(saved)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            adapter.save(input, null);
+
+            assertThat(existing.getPassword()).isEqualTo("old-hash");
         }
     }
 
@@ -58,15 +152,22 @@ class UserJpaAdapterTest {
     class FindById {
 
         @Test
-        @DisplayName("found returns mapped DTO")
+        @DisplayName("found – returns mapped DTO")
         void foundReturnsMappedDto() {
-            fail("not yet implemented");
+            UserJpaEntity ent = entity();
+            User          dom = domain();
+            when(repository.findById(userId)).thenReturn(Optional.of(ent));
+            when(mapper.toDomain(ent)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            assertThat(adapter.findById(userId)).isEqualTo(dto());
         }
 
         @Test
-        @DisplayName("not found returns null")
+        @DisplayName("not found – returns null")
         void notFoundReturnsNull() {
-            fail("not yet implemented");
+            when(repository.findById(userId)).thenReturn(Optional.empty());
+            assertThat(adapter.findById(userId)).isNull();
         }
     }
 
@@ -75,15 +176,22 @@ class UserJpaAdapterTest {
     class FindByEmail {
 
         @Test
-        @DisplayName("found returns mapped DTO")
+        @DisplayName("found – returns mapped DTO")
         void foundReturnsMappedDto() {
-            fail("not yet implemented");
+            UserJpaEntity ent = entity();
+            User          dom = domain();
+            when(repository.findByEmail(email)).thenReturn(Optional.of(ent));
+            when(mapper.toDomain(ent)).thenReturn(dom);
+            when(mapper.toDTO(dom)).thenReturn(dto());
+
+            assertThat(adapter.findByEmail(email)).isEqualTo(dto());
         }
 
         @Test
-        @DisplayName("not found returns null")
+        @DisplayName("not found – returns null")
         void notFoundReturnsNull() {
-            fail("not yet implemented");
+            when(repository.findByEmail(email)).thenReturn(Optional.empty());
+            assertThat(adapter.findByEmail(email)).isNull();
         }
     }
 
@@ -92,46 +200,68 @@ class UserJpaAdapterTest {
     class FindPasswordHashByEmail {
 
         @Test
-        @DisplayName("found returns hash string")
+        @DisplayName("found – returns hash string")
         void foundReturnsHash() {
-            fail("not yet implemented");
+            when(repository.findByEmail(email)).thenReturn(Optional.of(entity()));
+            assertThat(adapter.findPasswordHashByEmail(email)).isEqualTo(hash);
         }
 
         @Test
-        @DisplayName("not found returns null")
+        @DisplayName("not found – returns null")
         void notFoundReturnsNull() {
-            fail("not yet implemented");
+            when(repository.findByEmail(email)).thenReturn(Optional.empty());
+            assertThat(adapter.findPasswordHashByEmail(email)).isNull();
         }
     }
 
     @Test
-    @DisplayName("findAll maps all entities to DTOs")
+    @DisplayName("findAll – maps all entities to DTOs")
     void findAllMapsAllEntities() {
-        fail("not yet implemented");
+        UserJpaEntity ent = entity();
+        User          dom = domain();
+        when(repository.findAll()).thenReturn(List.of(ent, ent));
+        when(mapper.toDomain(ent)).thenReturn(dom);
+        when(mapper.toDTO(dom)).thenReturn(dto());
+
+        assertThat(adapter.findAll()).hasSize(2);
     }
 
     @Test
-    @DisplayName("findByRole filters correctly by role string")
+    @DisplayName("findByRole – filters correctly by role string")
     void findByRoleFilters() {
-        fail("not yet implemented");
+        UserJpaEntity ent = entity();
+        User          dom = domain();
+        when(repository.findByRole("BURUH")).thenReturn(List.of(ent));
+        when(mapper.toDomain(ent)).thenReturn(dom);
+        when(mapper.toDTO(dom)).thenReturn(dto());
+
+        assertThat(adapter.findByRole("BURUH")).hasSize(1);
     }
 
     @Test
-    @DisplayName("findBuruhByMandorId returns buruh list for mandor")
+    @DisplayName("findBuruhByMandorId – returns buruh list for mandor")
     void findBuruhByMandorIdReturnsList() {
-        fail("not yet implemented");
+        UserJpaEntity ent = entity();
+        User          dom = domain();
+        when(repository.findByMandorId(mandorId)).thenReturn(List.of(ent));
+        when(mapper.toDomain(ent)).thenReturn(dom);
+        when(mapper.toDTO(dom)).thenReturn(dto());
+
+        assertThat(adapter.findBuruhByMandorId(mandorId)).hasSize(1);
     }
 
     @Test
-    @DisplayName("deleteById delegates to repository")
+    @DisplayName("deleteById – delegates to repository")
     void deleteByIdDelegates() {
-        fail("not yet implemented");
+        adapter.deleteById(userId);
+        verify(repository).deleteById(userId);
     }
 
     @Test
-    @DisplayName("existsById delegates to repository")
+    @DisplayName("existsById – delegates to repository")
     void existsByIdDelegates() {
-        fail("not yet implemented");
+        when(repository.existsById(userId)).thenReturn(true);
+        assertThat(adapter.existsById(userId)).isTrue();
     }
 
     @Nested
@@ -139,15 +269,25 @@ class UserJpaAdapterTest {
     class SaveAssignment {
 
         @Test
-        @DisplayName("buruh found sets mandorId and saves entity")
+        @DisplayName("buruh found – sets mandorId and saves entity")
         void buruhFoundSetsMandorIdAndSaves() {
-            fail("not yet implemented");
+            UserJpaEntity ent = entity();
+            when(repository.findById(userId)).thenReturn(Optional.of(ent));
+
+            adapter.saveBuruhMandorAssignment(userId, mandorId);
+
+            assertThat(ent.getMandorId()).isEqualTo(mandorId);
+            verify(repository).save(ent);
         }
 
         @Test
-        @DisplayName("buruh not found no save called")
+        @DisplayName("buruh not found – no save called")
         void buruhNotFoundNoSave() {
-            fail("not yet implemented");
+            when(repository.findById(userId)).thenReturn(Optional.empty());
+
+            adapter.saveBuruhMandorAssignment(userId, mandorId);
+
+            verify(repository, never()).save(any());
         }
     }
 
@@ -156,15 +296,26 @@ class UserJpaAdapterTest {
     class RemoveAssignment {
 
         @Test
-        @DisplayName("buruh found clears mandorId and saves entity")
+        @DisplayName("buruh found – clears mandorId and saves entity")
         void buruhFoundClearsMandorIdAndSaves() {
-            fail("not yet implemented");
+            UserJpaEntity ent = entity();
+            ent.setMandorId(mandorId);
+            when(repository.findById(userId)).thenReturn(Optional.of(ent));
+
+            adapter.removeBuruhMandorAssignment(userId);
+
+            assertThat(ent.getMandorId()).isNull();
+            verify(repository).save(ent);
         }
 
         @Test
-        @DisplayName("buruh not found no save called")
+        @DisplayName("buruh not found – no save called")
         void buruhNotFoundNoSave() {
-            fail("not yet implemented");
+            when(repository.findById(userId)).thenReturn(Optional.empty());
+
+            adapter.removeBuruhMandorAssignment(userId);
+
+            verify(repository, never()).save(any());
         }
     }
 }

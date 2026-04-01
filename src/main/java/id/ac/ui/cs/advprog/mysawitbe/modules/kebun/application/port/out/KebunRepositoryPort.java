@@ -44,4 +44,6 @@ public interface KebunRepositoryPort {
     UUID findKebunIdByMandorId(UUID mandorId);
 
     void moveMandor(UUID mandorId, UUID newKebunId);
+
+    boolean existsByKode(String kode);
 }

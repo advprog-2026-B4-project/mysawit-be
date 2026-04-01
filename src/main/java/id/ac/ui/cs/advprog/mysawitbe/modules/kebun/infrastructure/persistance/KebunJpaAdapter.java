@@ -164,4 +164,10 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
         target.setMandorId(mandorId);
         kebunJpaRepository.save(target);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByKode(String kode) {
+        return kebunJpaRepository.existsByKode(kode);
+    }
 }

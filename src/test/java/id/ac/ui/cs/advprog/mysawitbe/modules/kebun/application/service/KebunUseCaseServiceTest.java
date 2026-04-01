@@ -99,18 +99,40 @@ class KebunUseCaseServiceTest {
     }
 
     @Test
+    void assignMandorToKebun_targetKebunAlreadyHasMandor_throwsConflict() {
+        UUID mandorId = UUID.randomUUID();
+        UUID otherMandorId = UUID.randomUUID();
+        UserDTO mandorUser = new UserDTO(mandorId, "mandor1", "Mandor Name", "MANDOR", "mandor@test.com");
+
+        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "Kebun A", "KB-01", 20, coordinates));
+        when(userQueryUseCase.getUserById(mandorId)).thenReturn(mandorUser);
+        when(kebunRepository.findKebunIdByMandorId(mandorId)).thenReturn(null);
+        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(otherMandorId);
+
+        assertThatThrownBy(() -> service.assignMandorToKebun(mandorId, kebunId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Kebun sudah memiliki mandor");
+
+        verify(kebunRepository, never()).assignMandor(any(), any());
+    }
+
+    @Test
     void moveMandorToKebun_targetAlreadyHasOtherMandor_throwsConflict() {
         UUID mandorId = UUID.randomUUID();
         UUID currentKebunId = UUID.randomUUID();
+        UUID otherMandorId = UUID.randomUUID();
         UserDTO mandorUser = new UserDTO(mandorId, "mandor1", "Mandor Name", "MANDOR", "mandor@test.com");
+
         when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "Kebun A", "KB-01", 20, coordinates));
         when(userQueryUseCase.getUserById(mandorId)).thenReturn(mandorUser);
         when(kebunRepository.findKebunIdByMandorId(mandorId)).thenReturn(currentKebunId);
+        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(otherMandorId);
 
-        // Service will successfully move mandor (implementation doesn't check if target already has one)
-        service.moveMandorToKebun(mandorId, kebunId);
+        assertThatThrownBy(() -> service.moveMandorToKebun(mandorId, kebunId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Kebun tujuan sudah memiliki mandor");
 
-        verify(kebunRepository).moveMandor(mandorId, kebunId);
+        verify(kebunRepository, never()).moveMandor(any(), any());
     }
 
     @Test

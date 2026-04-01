@@ -49,7 +49,7 @@ class KebunUseCaseServiceTest {
     @Test
     void createKebun_trimsTextAndSavesNormalizedDto() {
         KebunDTO saved = new KebunDTO(kebunId, "Kebun A", "KB-01", 20, coordinates);
-        when(kebunRepository.findByNamaContainingOrKodeContaining("", "KB-01")).thenReturn(List.of());
+        when(kebunRepository.existsByKode("KB-01")).thenReturn(false);
         when(kebunRepository.findAll()).thenReturn(List.of());
         when(kebunRepository.save(any(KebunDTO.class))).thenReturn(saved);
 
@@ -61,8 +61,7 @@ class KebunUseCaseServiceTest {
 
     @Test
     void createKebun_duplicateKode_throwsConflict() {
-        KebunDTO existingKebun = new KebunDTO(UUID.randomUUID(), "Existing", "KB-01", 15, coordinates);
-        when(kebunRepository.findByNamaContainingOrKodeContaining("", "KB-01")).thenReturn(List.of(existingKebun));
+        when(kebunRepository.existsByKode("KB-01")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createKebun("Kebun A", "KB-01", 20, coordinates))
                 .isInstanceOf(IllegalStateException.class)

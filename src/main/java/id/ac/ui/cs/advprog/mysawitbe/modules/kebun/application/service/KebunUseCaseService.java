@@ -49,8 +49,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         validateNoOverlap(null, coordinates);
 
         // Check for duplicate kode
-        List<KebunDTO> existing = kebunRepository.findByNamaContainingOrKodeContaining("", kode);
-        if (!existing.isEmpty()) {
+        if (kebunRepository.existsByKode(kode)) {
             throw new IllegalStateException("Kode kebun sudah digunakan");
         }
 

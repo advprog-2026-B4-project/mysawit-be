@@ -153,4 +153,20 @@ class KebunUseCaseServiceTest {
         assertThat(result).isEqualTo(expected);
         verify(kebunRepository).findByNamaContainingOrKodeContaining("Alpha", "KB-01");
     }
+
+    @Test
+    void createKebun_rectangleCoordinates_throwsIllegalArgumentException() {
+        List<CoordinateDTO> rectangleCoordinates = List.of(
+                new CoordinateDTO(0, 0),
+                new CoordinateDTO(0, 20),
+                new CoordinateDTO(10, 0),
+                new CoordinateDTO(10, 20)
+        );
+
+        assertThatThrownBy(() -> service.createKebun("Kebun A", "KB-01", 20, rectangleCoordinates))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Kebun sawit hanya boleh berbentuk persegi");
+
+        verify(kebunRepository, never()).save(any());
+    }
 }

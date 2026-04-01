@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
-@WithMockUser(roles = "ADMIN_UTAMA")
+@WithMockUser(roles = "ADMIN")
 class KebunControllerTest {
 
     @Mock

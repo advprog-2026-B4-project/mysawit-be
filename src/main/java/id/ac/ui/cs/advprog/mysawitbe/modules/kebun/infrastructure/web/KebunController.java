@@ -38,7 +38,7 @@ public class KebunController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<KebunDTO>>> listKebun(
             @RequestParam(required = false, name = "nama") String searchNama,
             @RequestParam(required = false, name = "kode") String searchKode
@@ -50,7 +50,7 @@ public class KebunController {
     }
 
     @GetMapping("/{kebunId}")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KebunDTO>> getKebun(@PathVariable UUID kebunId) {
         log.info("Fetching kebun details for ID: {}", kebunId);
         KebunDTO result = kebunQueryUseCase.getKebunById(kebunId);
@@ -58,7 +58,7 @@ public class KebunController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KebunDTO>> create(@Valid @RequestBody CreateKebunRequestDTO body) {
         if (body.coordinates() == null || body.coordinates().size() != 4) {
             throw new IllegalArgumentException("Coordinates must contain exactly 4 points");
@@ -75,7 +75,7 @@ public class KebunController {
     }
 
     @PutMapping("/{kebunId}")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<KebunDTO>> edit(
             @PathVariable UUID kebunId,
             @Valid @RequestBody EditKebunRequestDTO body) {
@@ -91,7 +91,7 @@ public class KebunController {
     }
 
     @DeleteMapping("/{kebunId}")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID kebunId) {
         log.warn("Deleting kebun ID: {}", kebunId);
         kebunCommandUseCase.deleteKebun(kebunId);
@@ -100,7 +100,7 @@ public class KebunController {
     }
 
     @GetMapping("/{kebunId}/mandor")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<MandorResponse>> getMandor(@PathVariable UUID kebunId) {
         log.info("Fetching mandor for kebun ID: {}", kebunId);
         UUID mandorId = kebunQueryUseCase.getMandorIdByKebun(kebunId);
@@ -108,7 +108,7 @@ public class KebunController {
     }
 
     @GetMapping("/{kebunId}/supir")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDTO>>> getSupirList(
             @PathVariable UUID kebunId,
             @RequestParam(required = false, name = "nama") String searchNama
@@ -127,7 +127,7 @@ public class KebunController {
     }
 
     @GetMapping("/{kebunId}/buruh")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDTO>>> getBuruhList(
             @PathVariable UUID kebunId,
             @RequestParam(required = false, name = "nama") String searchNama
@@ -146,7 +146,7 @@ public class KebunController {
     }
 
     @PostMapping("/{kebunId}/assign/mandor")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> assignMandor(
             @PathVariable UUID kebunId,
             @Valid @RequestBody AssignPersonRequestDTO body) {
@@ -157,7 +157,7 @@ public class KebunController {
     }
 
     @PostMapping("/{kebunId}/move/mandor")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> moveMandor(
             @PathVariable UUID kebunId,
             @Valid @RequestBody AssignPersonRequestDTO body) {
@@ -168,7 +168,7 @@ public class KebunController {
     }
 
     @PostMapping("/{kebunId}/assign/supir")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> assignSupir(
             @PathVariable UUID kebunId,
             @Valid @RequestBody AssignPersonRequestDTO body) {
@@ -179,7 +179,7 @@ public class KebunController {
     }
 
     @PostMapping("/{kebunId}/move/supir")
-    @PreAuthorize("hasRole('ADMIN_UTAMA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> moveSupir(
             @PathVariable UUID kebunId,
             @Valid @RequestBody AssignPersonRequestDTO body) {

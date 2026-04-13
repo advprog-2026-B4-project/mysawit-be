@@ -1,12 +1,16 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,5 +37,24 @@ public class PengirimanController {
     ) {
         List<PengirimanDTO> result = queryUseCase.listDeliveriesBySupir(supirId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/mandor/supir")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<List<AssignedSupirDTO>>> listAssignedSupirForMandor(
+            @RequestAttribute("userId") UUID mandorId,
+            @RequestParam(required = false) String searchNama
+    ) {
+        List<AssignedSupirDTO> result = queryUseCase.listAssignedSupirForMandor(mandorId, searchNama);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @ExceptionHandler(KebunQueryDependencyUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleKebunQueryDependencyUnavailable(
+            KebunQueryDependencyUnavailableException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 }

@@ -40,9 +40,18 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     public KebunDTO createKebun(String nama, String kode, int luas, List<CoordinateDTO> coordinates) {
+        // Trim input
+        nama = (nama != null) ? nama.trim() : null;
+        kode = (kode != null) ? kode.trim() : null;
+
         validateBasic(nama, kode, luas, coordinates);
         KebunGeometry.validateSquareCorners(coordinates);
         validateNoOverlap(null, coordinates);
+
+        // Check for duplicate kode
+        if (kebunRepository.existsByKode(kode)) {
+            throw new IllegalStateException("Kode kebun sudah digunakan");
+        }
 
         KebunDTO dto = new KebunDTO(null, nama, kode, luas, coordinates);
         return kebunRepository.save(dto);
@@ -81,10 +90,20 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         requireIds(mandorId, kebunId);
         ensureKebunExists(kebunId);
 
-        // ensure user exists (role enforcement bisa kamu tambahin kalau policy auth sudah fix)
-        if (!userQueryUseCase.verifyUserExists(mandorId)) {
+        UserDTO user = userQueryUseCase.getUserById(mandorId);
+        if (user == null) {
             throw new EntityNotFoundException("Mandor not found: " + mandorId);
         }
+        if (!"MANDOR".equals(user.role())) {
+            throw new IllegalArgumentException("User is not a MANDOR: " + mandorId);
+        }
+
+        UUID currentKebunId = kebunRepository.findKebunIdByMandorId(mandorId);
+        if (currentKebunId != null) {
+            throw new IllegalStateException("Mandor sudah terikat pada kebun lain: " + currentKebunId);
+        }
+
+        ensureKebunHasNoMandor(kebunId, "Kebun sudah memiliki mandor");
 
         kebunRepository.assignMandor(mandorId, kebunId);
         eventPublisher.publishEvent(new MandorAssignedToKebunEvent(mandorId, kebunId));
@@ -95,9 +114,23 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         requireIds(mandorId, newKebunId);
         ensureKebunExists(newKebunId);
 
-        if (!userQueryUseCase.verifyUserExists(mandorId)) {
+        UserDTO user = userQueryUseCase.getUserById(mandorId);
+        if (user == null) {
             throw new EntityNotFoundException("Mandor not found: " + mandorId);
         }
+        if (!"MANDOR".equals(user.role())) {
+            throw new IllegalArgumentException("User is not a MANDOR: " + mandorId);
+        }
+
+        UUID currentKebunId = kebunRepository.findKebunIdByMandorId(mandorId);
+        if (currentKebunId == null) {
+            throw new IllegalStateException("Mandor belum terikat ke kebun manapun");
+        }
+        if (currentKebunId.equals(newKebunId)) {
+            throw new IllegalStateException("Mandor sudah terikat pada kebun tujuan");
+        }
+
+        ensureKebunHasNoMandor(newKebunId, "Kebun tujuan sudah memiliki mandor");
 
         kebunRepository.moveMandor(mandorId, newKebunId);
         eventPublisher.publishEvent(new MandorAssignedToKebunEvent(mandorId, newKebunId));
@@ -108,8 +141,13 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         requireIds(supirId, kebunId);
         ensureKebunExists(kebunId);
 
-        if (!userQueryUseCase.verifyUserExists(supirId)) {
+        // Validate user exists and has SUPIR role
+        UserDTO user = userQueryUseCase.getUserById(supirId);
+        if (user == null) {
             throw new EntityNotFoundException("Supir not found: " + supirId);
+        }
+        if (!"SUPIR".equals(user.role())) {
+            throw new IllegalArgumentException("User is not a SUPIR: " + supirId);
         }
 
         kebunRepository.assignSupir(supirId, kebunId);
@@ -120,11 +158,28 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         requireIds(supirId, newKebunId);
         ensureKebunExists(newKebunId);
 
-        if (!userQueryUseCase.verifyUserExists(supirId)) {
+        // Validate user exists and has SUPIR role
+        UserDTO user = userQueryUseCase.getUserById(supirId);
+        if (user == null) {
             throw new EntityNotFoundException("Supir not found: " + supirId);
+        }
+        if (!"SUPIR".equals(user.role())) {
+            throw new IllegalArgumentException("User is not a SUPIR: " + supirId);
         }
 
         kebunRepository.moveSupir(supirId, newKebunId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserDTO> getBuruhList(UUID kebunId) {
+        if (kebunId == null) throw new IllegalArgumentException("kebunId wajib diisi");
+        ensureKebunExists(kebunId);
+
+        return kebunRepository.findBuruhIdsByKebunId(kebunId).stream()
+                .map(userQueryUseCase::getUserById)
+                .sorted(Comparator.comparing(UserDTO::name, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
     }
 
     // ---------------- Query Use Cases ----------------
@@ -160,24 +215,9 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDTO> getBuruhList(UUID kebunId) {
-        if (kebunId == null) throw new IllegalArgumentException("kebunId wajib diisi");
-        ensureKebunExists(kebunId);
-
-        UUID mandorId = kebunRepository.findMandorIdByKebunId(kebunId);
-        if (mandorId == null) return List.of();
-
-        List<UserDTO> buruh = userQueryUseCase.getBuruhByMandorId(mandorId);
-        return buruh.stream()
-                .sorted(Comparator.comparing(UserDTO::name, String.CASE_INSENSITIVE_ORDER))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<KebunDTO> listKebun(String searchNama, String searchKode) {
-        String nama = (searchNama == null) ? "" : searchNama;
-        String kode = (searchKode == null) ? "" : searchKode;
+        String nama = (searchNama == null) ? "" : searchNama.trim();
+        String kode = (searchKode == null) ? "" : searchKode.trim();
 
         if (nama.isBlank() && kode.isBlank()) {
             return kebunRepository.findAll();
@@ -227,5 +267,12 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
     private void requireIds(UUID a, UUID b) {
         if (a == null) throw new IllegalArgumentException("personId wajib diisi");
         if (b == null) throw new IllegalArgumentException("kebunId wajib diisi");
+    }
+
+    private void ensureKebunHasNoMandor(UUID kebunId, String message) {
+        UUID existingMandorId = kebunRepository.findMandorIdByKebunId(kebunId);
+        if (existingMandorId != null) {
+            throw new IllegalStateException(message + ": " + existingMandorId);
+        }
     }
 }

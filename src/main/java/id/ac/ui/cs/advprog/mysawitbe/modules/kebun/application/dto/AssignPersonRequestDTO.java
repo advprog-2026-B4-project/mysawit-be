@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record AssignPersonRequestDTO(
-    @NotNull(message = "Person ID is required")
-    UUID personId,
-
-    @NotNull(message = "Kebun ID is required")
-    UUID kebunId
+        @NotNull(message = "Person ID is required")
+        UUID personId
 ) {}

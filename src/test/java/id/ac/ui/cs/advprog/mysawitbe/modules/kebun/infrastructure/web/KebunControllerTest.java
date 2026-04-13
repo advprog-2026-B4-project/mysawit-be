@@ -197,7 +197,7 @@ class KebunControllerTest {
     void assignMandor_validRequest_returns200() throws Exception {
         UUID kebunId = UUID.randomUUID();
         UUID mandorId = UUID.randomUUID();
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId, kebunId);
+        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId);
 
         mockMvc.perform(post("/api/kebun/{kebunId}/assign/mandor", kebunId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -209,7 +209,7 @@ class KebunControllerTest {
     @Test
     void assignMandor_missingPersonId_returns400() throws Exception {
         UUID kebunId = UUID.randomUUID();
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(null, kebunId);
+        AssignPersonRequestDTO body = new AssignPersonRequestDTO(null);
 
         mockMvc.perform(post("/api/kebun/{kebunId}/assign/mandor", kebunId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -243,7 +243,7 @@ class KebunControllerTest {
     void moveMandor_validRequest_returns200() throws Exception {
         UUID kebunId = UUID.randomUUID();
         UUID mandorId = UUID.randomUUID();
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId, kebunId);
+        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId);
 
         mockMvc.perform(post("/api/kebun/{kebunId}/move/mandor", kebunId)
                         .contentType(MediaType.APPLICATION_JSON)

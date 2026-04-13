@@ -169,4 +169,30 @@ class KebunUseCaseServiceTest {
 
         verify(kebunRepository, never()).save(any());
     }
+
+    @Test
+    void getBuruhList_withoutAssignedMandor_returnsEmptyList() {
+        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "Kebun A", "KB-01", 20, coordinates));
+        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(null);
+
+        List<UserDTO> result = service.getBuruhList(kebunId);
+
+        assertThat(result).isEmpty();
+        verify(userQueryUseCase, never()).getBuruhByMandorId(any());
+    }
+
+    @Test
+    void getBuruhList_withAssignedMandor_returnsSortedBuruh() {
+        UUID mandorId = UUID.randomUUID();
+        UserDTO buruhB = new UserDTO(UUID.randomUUID(), "buruh2", "Budi", "BURUH", "budi@test.com");
+        UserDTO buruhA = new UserDTO(UUID.randomUUID(), "buruh1", "Andi", "BURUH", "andi@test.com");
+
+        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "Kebun A", "KB-01", 20, coordinates));
+        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(mandorId);
+        when(userQueryUseCase.getBuruhByMandorId(mandorId)).thenReturn(List.of(buruhB, buruhA));
+
+        List<UserDTO> result = service.getBuruhList(kebunId);
+
+        assertThat(result).containsExactly(buruhA, buruhB);
+    }
 }

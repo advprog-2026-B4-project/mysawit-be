@@ -21,6 +21,7 @@ public record PayrollDTO(
         int wageRateApplied,
         int netAmount,
         String status,
+        String rejectionReason,
         LocalDateTime processedAt,
         LocalDateTime createdAt
 ) {}

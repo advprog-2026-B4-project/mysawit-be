@@ -92,13 +92,6 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<UUID> findBuruhIdsByKebunId(UUID kebunId) {
-        // Buruh diambil via mandor di modul auth, bukan disimpan di kebun.
-        return List.of();
-    }
-
-    @Override
     public void deleteById(UUID kebunId) {
         kebunJpaRepository.deleteById(kebunId);
     }

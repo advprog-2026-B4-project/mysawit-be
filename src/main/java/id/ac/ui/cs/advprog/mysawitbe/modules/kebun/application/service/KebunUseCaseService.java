@@ -176,8 +176,17 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         if (kebunId == null) throw new IllegalArgumentException("kebunId wajib diisi");
         ensureKebunExists(kebunId);
 
-        return kebunRepository.findBuruhIdsByKebunId(kebunId).stream()
-                .map(userQueryUseCase::getUserById)
+        UUID mandorId = kebunRepository.findMandorIdByKebunId(kebunId);
+        if (mandorId == null) {
+            return List.of();
+        }
+
+        List<UserDTO> buruhList = userQueryUseCase.getBuruhByMandorId(mandorId);
+        if (buruhList == null) {
+            return List.of();
+        }
+
+        return buruhList.stream()
                 .sorted(Comparator.comparing(UserDTO::name, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
     }

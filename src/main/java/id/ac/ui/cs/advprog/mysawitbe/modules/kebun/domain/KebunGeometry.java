@@ -61,13 +61,12 @@ public final class KebunGeometry {
         }
 
         if (actual.size() != 4 || !actual.equals(expected)) {
-            throw new IllegalArgumentException("Koordinat harus membentuk 4 sudut persegi/persegi panjang (axis-aligned)");
+            throw new IllegalArgumentException("Koordinat harus membentuk 4 sudut persegi (axis-aligned)");
         }
 
-        // Optional strict square enforcement:
-        // if ((maxLat - minLat) != (maxLng - minLng)) {
-        //     throw new IllegalArgumentException("Kebun diasumsikan persegi: sisi lat dan sisi lng harus sama panjang");
-        // }
+        if ((maxLat - minLat) != (maxLng - minLng)) {
+            throw new IllegalArgumentException("Kebun sawit hanya boleh berbentuk persegi");
+        }
     }
 
     private static String key(int lat, int lng) {

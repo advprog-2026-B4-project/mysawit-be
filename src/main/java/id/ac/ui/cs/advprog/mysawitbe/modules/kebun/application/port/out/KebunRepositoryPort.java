@@ -24,8 +24,6 @@ public interface KebunRepositoryPort {
 
     List<UUID> findSupirIdsByKebunId(UUID kebunId);
 
-    List<UUID> findBuruhIdsByKebunId(UUID kebunId);
-
     void deleteById(UUID kebunId);
 
     boolean hasMandorAssigned(UUID kebunId);

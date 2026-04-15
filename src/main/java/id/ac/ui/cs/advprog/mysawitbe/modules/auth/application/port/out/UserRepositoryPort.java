@@ -29,6 +29,8 @@ public interface UserRepositoryPort {
 
     List<UserDTO> findBuruhByMandorId(UUID mandorId);
 
+    UUID findMandorIdByBuruhId(UUID buruhId);
+
     void deleteById(UUID userId);
 
     boolean existsById(UUID userId);

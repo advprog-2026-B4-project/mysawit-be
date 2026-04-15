@@ -95,6 +95,13 @@ public class UserJpaAdapter implements UserRepositoryPort {
     }
 
     @Override
+    public UUID findMandorIdByBuruhId(UUID buruhId) {
+        return repository.findById(buruhId)
+                .map(UserJpaEntity::getMandorId)
+                .orElse(null);
+    }
+
+    @Override
     public void saveBuruhMandorAssignment(UUID buruhId, UUID mandorId) {
         repository.findById(buruhId).ifPresent(e -> {
             e.setMandorId(mandorId);

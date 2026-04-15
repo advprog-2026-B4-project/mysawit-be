@@ -8,6 +8,8 @@ import java.util.Set;
 
 public final class KebunGeometry {
 
+    private static final String SQUARE_ONLY_MESSAGE = "Kebun sawit hanya boleh berbentuk persegi";
+
     private KebunGeometry() {}
 
     public static BoundingBox toBoundingBox(List<CoordinateDTO> coords) {
@@ -60,7 +62,7 @@ public final class KebunGeometry {
         int sideLat = maxLat - minLat;
         int sideLng = maxLng - minLng;
         if (sideLat != sideLng) {
-            throw new IllegalArgumentException("Koordinat harus membentuk 4 sudut persegi (axis-aligned)");
+            throw new IllegalArgumentException(SQUARE_ONLY_MESSAGE);
         }
 
         Set<String> expected = Set.of(
@@ -76,7 +78,7 @@ public final class KebunGeometry {
         }
 
         if (actual.size() != 4 || !actual.equals(expected)) {
-            throw new IllegalArgumentException("Koordinat harus membentuk 4 sudut persegi (axis-aligned)");
+            throw new IllegalArgumentException(SQUARE_ONLY_MESSAGE);
         }
     }
 

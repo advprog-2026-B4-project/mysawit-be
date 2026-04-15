@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,7 @@ public class PanenController {
     // 3. Link untuk Mandor melihat riwayat panen buruh-buruhnya
     // URL: GET /api/panen/mandor?buruhName=Budi
     @GetMapping("/mandor")
+    @PreAuthorize("hasRole('MANDOR')")
     public ResponseEntity<ApiResponse<List<PanenDTO>>> getRiwayatPanenUntukMandor(
             @RequestAttribute("userId") UUID mandorId,
             @RequestParam(required = false) String buruhName,
@@ -78,5 +80,4 @@ public class PanenController {
         List<PanenDTO> result = queryUseCase.listPanenByMandor(mandorId, buruhName, date);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
-
 }

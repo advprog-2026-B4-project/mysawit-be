@@ -1,10 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 
 /**
  * Outbound port for panen persistence.
@@ -25,5 +25,5 @@ public interface PanenRepositoryPort {
 
     List<PanenDTO> findByBuruhId(UUID buruhId, LocalDate startDate, LocalDate endDate, String status);
 
-    List<PanenDTO> findByMandorId(UUID mandorId, String buruhName, LocalDate date);
+    List<PanenDTO> findByKebunIdAndDate(UUID kebunId, LocalDate date);
 }

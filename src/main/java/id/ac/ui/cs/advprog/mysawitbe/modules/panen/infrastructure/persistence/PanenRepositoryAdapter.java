@@ -58,16 +58,8 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
     }
 
     @Override
-    public List<PanenDTO> findByMandorId(UUID mandorId, String buruhName, LocalDate date) {
-        /*
-         * CATATAN ARSITEKTUR (Berdasarkan agent.md):
-         * Entitas PanenEntity tidak menyimpan mandorId maupun buruhName (data tersebut milik modul Auth/Kebun).
-         * Idealnya, di layer Application (PanenQueryImpl), harus dicari dulu "KebunId yang diawasi oleh Mandor", 
-         * lalu memanggil repositori berdasarkan KebunId.
-         * * Sebagai implementasi konkrit pada Port ini, kita terapkan filter DB sejauh yang dimungkinkan (Date),
-         * dan sisa filter (seperti nama buruh) bisa dilakukan melalui interaksi antar-modul di Service.
-         */
-        return jpaRepository.findAllWithDateFilter(date).stream()
+    public List<PanenDTO> findByKebunIdAndDate(UUID kebunId, LocalDate date) {
+        return jpaRepository.findByKebunIdAndDateFilter(kebunId, date).stream()
                 .map(mapper::entityToDto)
                 .toList();
     }

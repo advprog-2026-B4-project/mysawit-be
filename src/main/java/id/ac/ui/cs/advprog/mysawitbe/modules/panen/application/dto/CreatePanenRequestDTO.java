@@ -9,9 +9,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record CreatePanenRequestDTO(
-    @NotNull(message = "Kebun ID is required")
-    UUID kebunId,
-
     @NotNull(message = "Weight is required")
     @Positive(message = "Weight must be positive")
     Integer weight,

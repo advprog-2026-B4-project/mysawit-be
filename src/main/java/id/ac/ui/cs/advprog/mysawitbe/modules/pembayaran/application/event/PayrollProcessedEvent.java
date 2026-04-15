@@ -5,7 +5,7 @@ import java.util.UUID;
 /**
  * Published when admin approves or rejects a payroll entry.
  * status: APPROVED, REJECTED.
- * Consumed by: notification module, wallet module (credits wallet on APPROVED).
+ * Consumed by: notification module.
  */
 public record PayrollProcessedEvent(
         UUID payrollId,

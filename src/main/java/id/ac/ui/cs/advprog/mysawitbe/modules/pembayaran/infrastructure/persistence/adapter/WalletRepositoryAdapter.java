@@ -19,6 +19,7 @@ import java.util.UUID;
 public class WalletRepositoryAdapter implements WalletRepositoryPort {
 
 	private static final String CREDIT_TYPE = "CREDIT";
+	private static final String DEBIT_TYPE = "DEBIT";
 
 	private final WalletJpaRepository walletJpaRepository;
 	private final WalletTransactionJpaRepository walletTransactionJpaRepository;
@@ -44,6 +45,31 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 				.payrollId(payrollId)
 				.amount(amount)
 				.type(CREDIT_TYPE)
+				.build();
+		walletTransactionJpaRepository.save(transaction);
+
+		return walletMapper.toBalanceDto(savedWallet);
+	}
+
+	@Override
+	public WalletBalanceDTO debit(UUID userId, int amount, UUID payrollId) {
+		if (amount <= 0) {
+			throw new IllegalArgumentException("Debit amount must be positive");
+		}
+
+		WalletEntity wallet = findOrCreateWallet(userId);
+		if (wallet.getBalance() < amount) {
+			throw new IllegalStateException("Insufficient admin wallet balance");
+		}
+
+		wallet.setBalance(wallet.getBalance() - amount);
+		WalletEntity savedWallet = walletJpaRepository.save(wallet);
+
+		WalletTransactionEntity transaction = WalletTransactionEntity.builder()
+				.userId(userId)
+				.payrollId(payrollId)
+				.amount(amount)
+				.type(DEBIT_TYPE)
 				.build();
 		walletTransactionJpaRepository.save(transaction);
 

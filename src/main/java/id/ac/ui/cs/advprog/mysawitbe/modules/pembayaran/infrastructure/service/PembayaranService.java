@@ -182,6 +182,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		requireAdminId(adminId);
 		PayrollDTO current = requirePayroll(payrollId);
 		ensurePending(current);
+		walletRepository.debit(adminId, current.netAmount(), current.payrollId());
 
 		PayrollDTO approved = new PayrollDTO(
 				current.payrollId(),

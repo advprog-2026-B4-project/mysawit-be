@@ -107,3 +107,14 @@ tasks.register<JavaExec>("changeAdminPassword") {
     environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")
     environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
 }
+
+tasks.register<JavaExec>("seedPayrollTestData") {
+    group       = "seed"
+    description = "Generate deterministic seed data for payroll and wallet feature testing."
+    classpath   = sourceSets["main"].runtimeClasspath
+    mainClass   = "id.ac.ui.cs.advprog.mysawitbe.tools.SeedPayrollTestData"
+
+    environment("DB_URL",      System.getenv("DB_URL")      ?: "jdbc:postgresql://localhost:5432/mysawit")
+    environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")
+    environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
+}

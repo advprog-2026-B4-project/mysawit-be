@@ -33,8 +33,9 @@ public interface PembayaranCommandUseCase {
     void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event);
 
     /**
-     * Admin approves a payroll entry. ADMIN only.
-     * Publishes PayrollProcessedEvent (credits the user wallet).
+     * Admin approves a pending payroll entry. ADMIN only.
+     * Debits admin wallet and credits target user wallet.
+     * Publishes PayrollProcessedEvent.
      */
     @PreAuthorize("hasRole('ADMIN')")
     PayrollDTO approvePayroll(UUID payrollId, UUID adminId);

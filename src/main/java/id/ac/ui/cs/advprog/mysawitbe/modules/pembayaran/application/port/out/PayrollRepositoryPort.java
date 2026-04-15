@@ -1,10 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollStatusDTO;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -19,9 +19,9 @@ public interface PayrollRepositoryPort {
 
     PayrollStatusDTO findStatusById(UUID payrollId);
 
-    List<PayrollDTO> findByUserId(UUID userId, LocalDate startDate, LocalDate endDate, String status);
+    PayrollPageDTO findByUserId(UUID userId, LocalDate startDate, LocalDate endDate, String status, int page, int size);
 
-    List<PayrollDTO> findAll(LocalDate startDate, LocalDate endDate, String status);
+    PayrollPageDTO findAll(LocalDate startDate, LocalDate endDate, String status, int page, int size);
 
     /**
      * Returns the currently configured wage rate for a given role.

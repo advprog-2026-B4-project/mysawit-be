@@ -31,6 +31,7 @@ public class UserJpaAdapter implements UserRepositoryPort {
             entity.setName(domain.getName());
             entity.setEmail(domain.getEmail());
             entity.setRole(domain.getRole().name());
+            entity.setMandorCertificationNumber(domain.getMandorCertificationNumber());
             if (hashedPassword != null) {
                 entity.setPassword(hashedPassword);
             }

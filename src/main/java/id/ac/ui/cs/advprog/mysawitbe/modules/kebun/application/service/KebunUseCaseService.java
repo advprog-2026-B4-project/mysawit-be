@@ -195,6 +195,14 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     @Transactional(readOnly = true)
+    public UUID findKebunIdByMandorId(UUID mandorId) {
+        if (mandorId == null) throw new IllegalArgumentException("mandorId wajib diisi");
+        return kebunRepository.findKebunIdByMandorId(mandorId);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
     public KebunDTO getKebunById(UUID kebunId) {
         if (kebunId == null) throw new IllegalArgumentException("kebunId wajib diisi");
         KebunDTO kebun = kebunRepository.findById(kebunId);
@@ -284,4 +292,6 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
             throw new IllegalStateException(message + ": " + existingMandorId);
         }
     }
+
+
 }

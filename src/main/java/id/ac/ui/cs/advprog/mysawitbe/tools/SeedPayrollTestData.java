@@ -4,10 +4,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -86,12 +88,14 @@ public class SeedPayrollTestData {
                 resetSeedFeatureData(conn);
 
                 List<SeedPayroll> payrolls = buildSeedPayrolls();
+                List<SeedPanen> panenRows = buildSeedPanenRows(payrolls);
+                upsertPanenWithPhotos(conn, panenRows);
                 upsertPayrolls(conn, payrolls);
                 upsertWalletTransactions(conn, payrolls);
                 upsertWallets(conn, payrolls);
 
                 conn.commit();
-                printSummary(payrolls);
+                printSummary(payrolls, panenRows);
             } catch (Exception e) {
                 conn.rollback();
                 throw e;
@@ -139,6 +143,7 @@ public class SeedPayrollTestData {
 
     private static void resetSeedFeatureData(Connection conn) throws Exception {
         List<UUID> userIds = WORKER_USERS.stream().map(SeedUser::userId).toList();
+        List<UUID> buruhIds = List.of(BURUH_1.userId(), BURUH_2.userId());
 
         try (PreparedStatement deleteTransactions = conn.prepareStatement(
                 "DELETE FROM wallet_transactions WHERE user_id = ?")) {
@@ -156,6 +161,15 @@ public class SeedPayrollTestData {
                 deletePayrolls.addBatch();
             }
             deletePayrolls.executeBatch();
+        }
+
+        try (PreparedStatement deleteHarvestReports = conn.prepareStatement(
+                "DELETE FROM harvest_reports WHERE buruh_id = ?")) {
+            for (UUID buruhId : buruhIds) {
+                deleteHarvestReports.setObject(1, buruhId);
+                deleteHarvestReports.addBatch();
+            }
+            deleteHarvestReports.executeBatch();
         }
     }
 
@@ -283,7 +297,234 @@ public class SeedPayrollTestData {
                 null
         ));
 
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-buruh-2-pending"),
+                BURUH_2.userId(),
+                "BURUH",
+                stableUuid("ref-panen-5"),
+                "PANEN",
+                140,
+                10_000,
+                "PENDING",
+                null,
+                null,
+                now.minusDays(1),
+                null
+        ));
+
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-buruh-2-approved-2"),
+                BURUH_2.userId(),
+                "BURUH",
+                stableUuid("ref-panen-6"),
+                "PANEN",
+                75,
+                10_000,
+                "APPROVED",
+                null,
+                now.minusDays(8),
+                now.minusDays(9),
+                "PAY-SEED-005"
+        ));
+
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-buruh-1-approved-2"),
+                BURUH_1.userId(),
+                "BURUH",
+                stableUuid("ref-panen-7"),
+                "PANEN",
+                155,
+                10_000,
+                "APPROVED",
+                null,
+                now.minusDays(9),
+                now.minusDays(10),
+                "PAY-SEED-006"
+        ));
+
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-buruh-1-pending-2"),
+                BURUH_1.userId(),
+                "BURUH",
+                stableUuid("ref-panen-8"),
+                "PANEN",
+                90,
+                10_000,
+                "PENDING",
+                null,
+                null,
+                now.minusHours(12),
+                null
+        ));
+
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-supir-rejected"),
+                SUPIR.userId(),
+                "SUPIR",
+                stableUuid("ref-pengiriman-5"),
+                "PENGIRIMAN",
+                160,
+                8_000,
+                "REJECTED",
+                "Surat jalan belum divalidasi",
+                now.minusDays(4),
+                now.minusDays(5),
+                null
+        ));
+
+        rows.add(new SeedPayroll(
+                stableUuid("payroll-mandor-pending"),
+                MANDOR.userId(),
+                "MANDOR",
+                stableUuid("ref-pengiriman-6"),
+                "PENGIRIMAN",
+                205,
+                12_000,
+                "PENDING",
+                null,
+                null,
+                now.minusDays(2),
+                null
+        ));
+
         return rows;
+    }
+
+    private static List<SeedPanen> buildSeedPanenRows(List<SeedPayroll> payrolls) {
+        List<SeedPanen> rows = new ArrayList<>();
+
+        for (SeedPayroll payroll : payrolls) {
+            if (!"PANEN".equals(payroll.referenceType())) {
+                continue;
+            }
+
+            List<String> photoUrls = new ArrayList<>();
+            photoUrls.add(seedPhotoUrl(payroll.referenceId(), 1));
+            photoUrls.add(seedPhotoUrl(payroll.referenceId(), 2));
+
+            // Pending payroll gets one extra photo so UI can exercise >2 evidence previews.
+            if ("PENDING".equals(payroll.status())) {
+                photoUrls.add(seedPhotoUrl(payroll.referenceId(), 3));
+            }
+
+            rows.add(new SeedPanen(
+                    payroll.referenceId(),
+                    payroll.userId(),
+                    payroll.weight(),
+                    payroll.status(),
+                    payroll.rejectionReason(),
+                    "Seed panen untuk payroll " + payroll.payrollId(),
+                    payroll.createdAt(),
+                    photoUrls
+            ));
+        }
+
+        return rows;
+    }
+
+    private static void upsertPanenWithPhotos(Connection conn, List<SeedPanen> panenRows) throws Exception {
+        if (panenRows.isEmpty()) {
+            return;
+        }
+
+        UUID kebunId = resolveSeedKebunId(conn);
+
+        String harvestSql = """
+                INSERT INTO harvest_reports (
+                    id, buruh_id, kebun_id, weight, description,
+                    status, rejection_reason, created_at, harvest_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    buruh_id = EXCLUDED.buruh_id,
+                    kebun_id = EXCLUDED.kebun_id,
+                    weight = EXCLUDED.weight,
+                    description = EXCLUDED.description,
+                    status = EXCLUDED.status,
+                    rejection_reason = EXCLUDED.rejection_reason,
+                    created_at = EXCLUDED.created_at,
+                    harvest_date = EXCLUDED.harvest_date
+                """;
+
+        try (PreparedStatement ps = conn.prepareStatement(harvestSql)) {
+            for (SeedPanen row : panenRows) {
+                ps.setObject(1, row.panenId());
+                ps.setObject(2, row.buruhId());
+                ps.setObject(3, kebunId);
+                ps.setInt(4, row.weight());
+                ps.setString(5, row.description());
+                ps.setString(6, row.status());
+                ps.setString(7, row.rejectionReason());
+                ps.setTimestamp(8, toTimestamp(row.createdAt()));
+                ps.setDate(9, Date.valueOf(row.createdAt().toLocalDate()));
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+
+        try (PreparedStatement deletePhotos = conn.prepareStatement(
+                "DELETE FROM harvest_photos WHERE harvest_id = ?")) {
+            for (SeedPanen row : panenRows) {
+                deletePhotos.setObject(1, row.panenId());
+                deletePhotos.addBatch();
+            }
+            deletePhotos.executeBatch();
+        }
+
+        String photoSql = """
+                INSERT INTO harvest_photos (id, harvest_id, photo_url, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    harvest_id = EXCLUDED.harvest_id,
+                    photo_url = EXCLUDED.photo_url,
+                    created_at = EXCLUDED.created_at
+                """;
+
+        try (PreparedStatement ps = conn.prepareStatement(photoSql)) {
+            for (SeedPanen row : panenRows) {
+                int idx = 1;
+                for (String photoUrl : row.photoUrls()) {
+                    ps.setObject(1, stableUuid("photo-" + row.panenId() + "-" + idx));
+                    ps.setObject(2, row.panenId());
+                    ps.setString(3, photoUrl);
+                    ps.setTimestamp(4, toTimestamp(row.createdAt()));
+                    ps.addBatch();
+                    idx++;
+                }
+            }
+            ps.executeBatch();
+        }
+    }
+
+    private static UUID resolveSeedKebunId(Connection conn) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT kebun_id FROM kebun ORDER BY kebun_id LIMIT 1");
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return (UUID) rs.getObject(1);
+            }
+        }
+
+        UUID kebunId = stableUuid("seed-kebun-payroll");
+        String sql = """
+                INSERT INTO kebun (kebun_id, nama, kode, luas, mandor_id)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (kebun_id) DO UPDATE SET
+                    nama = EXCLUDED.nama,
+                    kode = EXCLUDED.kode,
+                    luas = EXCLUDED.luas,
+                    mandor_id = EXCLUDED.mandor_id
+                """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setObject(1, kebunId);
+            ps.setString(2, "Kebun Seed Payroll");
+            ps.setString(3, "KEB-SEED-PAYROLL");
+            ps.setInt(4, 250);
+            ps.setNull(5, Types.OTHER);
+            ps.executeUpdate();
+        }
+
+        return kebunId;
     }
 
     private static void upsertPayrolls(Connection conn, List<SeedPayroll> payrolls) throws Exception {
@@ -395,10 +636,13 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static void printSummary(List<SeedPayroll> payrolls) {
+    private static void printSummary(List<SeedPayroll> payrolls, List<SeedPanen> panenRows) {
         System.out.println("Seed payroll test data generated successfully.");
         System.out.println();
         System.out.println("Worker login password: " + TEST_PASSWORD);
+        System.out.println();
+        System.out.println("Total payroll rows seeded: " + payrolls.size());
+        System.out.println("Total PANEN rows with evidence photos: " + panenRows.size());
         System.out.println();
 
         for (SeedUser user : WORKER_USERS) {
@@ -424,6 +668,11 @@ public class SeedPayrollTestData {
         return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
+    private static String seedPhotoUrl(UUID panenId, int idx) {
+        String shortId = panenId.toString().substring(0, 8);
+        return "https://placehold.co/640x420/2d6a4f/ffffff?text=Panen+" + shortId + "-" + idx;
+    }
+
     private static String env(String key, String defaultValue) {
         String val = System.getenv(key);
         return (val != null && !val.isBlank()) ? val : defaultValue;
@@ -436,6 +685,17 @@ public class SeedPayrollTestData {
             String name,
             String role,
             UUID mandorId
+    ) {}
+
+    private record SeedPanen(
+            UUID panenId,
+            UUID buruhId,
+            int weight,
+            String status,
+            String rejectionReason,
+            String description,
+            LocalDateTime createdAt,
+            List<String> photoUrls
     ) {}
 
     private record SeedPayroll(

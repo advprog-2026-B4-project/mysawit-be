@@ -25,6 +25,7 @@ public interface UserMapper {
     @Mapping(target = "name", source = "name")
     @Mapping(target = "role", expression = "java(domain.getRole().name())")
     @Mapping(target = "email", source = "email")
+    @Mapping(target = "mandorCertificationNumber", source = "mandorCertificationNumber")
     UserDTO toDTO(User domain);
 
     // DTO -> Domain (password set separately)

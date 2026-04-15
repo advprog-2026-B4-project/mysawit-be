@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.AuthTokenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.GoogleOAuthUrlDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.OAuthCallbackResultDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 
 import java.util.UUID;
@@ -23,7 +24,7 @@ public interface AuthCommandUseCase {
      * Role must be one of: ADMIN, MANDOR, BURUH, SUPIR.
      * Returns the created user's data.
      */
-    UserDTO registerUser(String email, String password, String name, String role);
+    UserDTO registerUser(String email, String password, String name, String role, String mandorCertificationNumber);
 
     /**
      * Generate Google OAuth2 authorization URL with state parameter.
@@ -33,10 +34,15 @@ public interface AuthCommandUseCase {
 
     /**
      * Handle OAuth2 callback from Google.
-     * Validates state, exchanges code for Google tokens, retrieves user info,
-     * creates/updates user record, and issues JWT.
+        * Existing users receive an auth token.
+        * New users receive a temporary registration token to finish role selection.
      */
-    AuthTokenDTO handleGoogleOAuthCallback(String code, String state);
+        OAuthCallbackResultDTO handleGoogleOAuthCallback(String code, String state);
+
+        /**
+        * Complete OAuth registration for new Google users after role selection.
+        */
+        AuthTokenDTO completeGoogleOAuthRegistration(String registrationToken, String role, String mandorCertificationNumber);
 
     /**
      * Invalidate current user session/token.
@@ -47,7 +53,7 @@ public interface AuthCommandUseCase {
      * Edit an existing user's details.
      * Admin-only; cannot edit another admin.
      */
-    UserDTO editUser(UUID userId, String name, String role, String email);
+    UserDTO editUser(UUID userId, String name, String role, String email, String mandorCertificationNumber);
 
     /**
      * Delete a user by ID.

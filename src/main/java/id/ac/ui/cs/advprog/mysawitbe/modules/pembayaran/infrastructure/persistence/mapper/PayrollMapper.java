@@ -11,6 +11,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface PayrollMapper {
 
+    @Mapping(target = "evidencePhotoUrls", expression = "java(java.util.List.of())")
     PayrollDTO toDto(PayrollEntity entity);
 
     @Mapping(target = "paymentReference", ignore = true)

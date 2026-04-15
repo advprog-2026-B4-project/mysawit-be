@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
@@ -53,6 +54,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 	private final PayrollRepositoryPort payrollRepository;
 	private final WalletRepositoryPort walletRepository;
+	private final PanenQueryUseCase panenQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
 	private final ApplicationEventPublisher eventPublisher;
 
@@ -68,13 +70,72 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	@Override
 	public PayrollPageDTO getPayrollsByUserId(UUID userId, LocalDate startDate, LocalDate endDate, String status, int page, int size) {
 		validateDateRange(startDate, endDate);
-		return payrollRepository.findByUserId(userId, startDate, endDate, normalizeStatus(status), page, size);
+		PayrollPageDTO payrollPage = payrollRepository.findByUserId(userId, startDate, endDate, normalizeStatus(status), page, size);
+		return enrichPayrollPageWithPanenEvidence(payrollPage);
 	}
 
 	@Override
 	public PayrollPageDTO listAllPayrolls(LocalDate startDate, LocalDate endDate, String status, int page, int size) {
 		validateDateRange(startDate, endDate);
-		return payrollRepository.findAll(startDate, endDate, normalizeStatus(status), page, size);
+		PayrollPageDTO payrollPage = payrollRepository.findAll(startDate, endDate, normalizeStatus(status), page, size);
+		return enrichPayrollPageWithPanenEvidence(payrollPage);
+	}
+
+	private PayrollPageDTO enrichPayrollPageWithPanenEvidence(PayrollPageDTO page) {
+		List<PayrollDTO> enrichedItems = page.items().stream()
+				.map(this::enrichPayrollWithPanenEvidence)
+				.toList();
+
+		return new PayrollPageDTO(
+				enrichedItems,
+				page.page(),
+				page.size(),
+				page.totalElements(),
+				page.totalPages(),
+				page.hasNext(),
+				page.hasPrevious()
+		);
+	}
+
+	private PayrollDTO enrichPayrollWithPanenEvidence(PayrollDTO payroll) {
+		if (!REFERENCE_PANEN.equalsIgnoreCase(payroll.referenceType())) {
+			return copyPayrollWithEvidenceUrls(payroll, List.of());
+		}
+
+		try {
+			var panen = panenQueryUseCase.getPanenById(payroll.referenceId());
+			if (panen == null || panen.photos() == null) {
+				return copyPayrollWithEvidenceUrls(payroll, List.of());
+			}
+
+			List<String> urls = panen.photos().stream()
+					.map(photo -> photo.url())
+					.filter(url -> url != null && !url.isBlank())
+					.distinct()
+					.toList();
+
+			return copyPayrollWithEvidenceUrls(payroll, urls);
+		} catch (RuntimeException ex) {
+			return copyPayrollWithEvidenceUrls(payroll, List.of());
+		}
+	}
+
+	private PayrollDTO copyPayrollWithEvidenceUrls(PayrollDTO payroll, List<String> evidenceUrls) {
+		return new PayrollDTO(
+				payroll.payrollId(),
+				payroll.userId(),
+				payroll.role(),
+				payroll.referenceId(),
+				payroll.referenceType(),
+				payroll.weight(),
+				payroll.wageRateApplied(),
+				payroll.netAmount(),
+				payroll.status(),
+				payroll.rejectionReason(),
+				payroll.processedAt(),
+				payroll.createdAt(),
+				evidenceUrls
+		);
 	}
 
 	@Override

@@ -31,6 +31,12 @@ public class PanenController {
     private final PanenCommandUseCase commandUseCase;
     private final PanenQueryUseCase queryUseCase;
 
+    @GetMapping("/{panenId}")
+    public ResponseEntity<ApiResponse<PanenDTO>> getPanenById(@PathVariable UUID panenId) {
+        PanenDTO responseData = queryUseCase.getPanenById(panenId);
+        return ResponseEntity.ok(ApiResponse.success(responseData));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<PanenDTO>> createPanen(
             @RequestAttribute("userId") UUID buruhId, 
@@ -46,14 +52,6 @@ public class PanenController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(responseData));
-    }
-
-    // 1. Link untuk melihat SATU data panen spesifik berdasarkan ID
-    // URL: GET /api/panen/{panenId}
-    @GetMapping("/{panenId}")
-    public ResponseEntity<ApiResponse<PanenDTO>> getPanenById(@PathVariable UUID panenId) {
-        PanenDTO result = queryUseCase.getPanenById(panenId);
-        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     // 2. Link untuk Buruh melihat riwayat panennya sendiri

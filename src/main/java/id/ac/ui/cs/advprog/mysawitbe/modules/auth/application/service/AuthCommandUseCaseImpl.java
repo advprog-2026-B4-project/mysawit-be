@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,38 +52,49 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
     }
 
     @Override
-public AuthTokenDTO loginWithEmail(String email, String password) {
-    String hash = userRepository.findPasswordHashByEmail(email);
-    
-    if (hash == null) {
-        UserDTO user = userRepository.findByEmail(email);
-        if (user != null) {
-            throw new IllegalArgumentException(
-                "Akun ini terdaftar via Google. Silakan login dengan Google."
-            );
+    public AuthTokenDTO loginWithEmail(String email, String password) {
+        String hash = userRepository.findPasswordHashByEmail(email);
+
+        if (hash == null) {
+            UserDTO user = userRepository.findByEmail(email);
+            if (user != null) {
+                throw new IllegalArgumentException(
+                        "Akun ini terdaftar via Google. Silakan login dengan Google."
+                );
+            }
+            throw new IllegalArgumentException("Email tidak terdaftar");
         }
-        throw new IllegalArgumentException("Email tidak terdaftar");
+
+        if (!passwordEncoder.matches(password, hash)) {
+            throw new IllegalArgumentException("Password salah");
+        }
+
+        UserDTO user = userRepository.findByEmail(email);
+        String token = jwtService.generateToken(user.userId().toString(), user.role());
+        return new AuthTokenDTO(token, user.role());
     }
-    
-    if (!passwordEncoder.matches(password, hash)) {
-        throw new IllegalArgumentException("Password salah");
-    }
-    
-    UserDTO user = userRepository.findByEmail(email);
-    String token = jwtService.generateToken(user.userId().toString(), user.role());
-    return new AuthTokenDTO(token, user.role());
-}
 
     @Override
-    public UserDTO registerUser(String email, String password, String name, String role) {
-        validateRoleNotAdmin(role);
+    public UserDTO registerUser(String email, String password, String name, String role, String mandorCertificationNumber) {
+        String normalizedRole = normalizeRole(role);
+        validateRoleNotAdmin(normalizedRole);
         if (userRepository.findByEmail(email) != null) {
             throw new IllegalStateException("Email already registered");
         }
+        String normalizedCertificationNumber = normalizeMandorCertificationNumber(mandorCertificationNumber);
+        validateMandorCertificationForRegistration(normalizedRole, normalizedCertificationNumber);
+
         // username derived from email local-part
         String username = email.split("@")[0];
         String hashed   = passwordEncoder.encode(password);
-        UserDTO dto = new UserDTO(null, username, name, role, email);
+        UserDTO dto = new UserDTO(
+                null,
+                username,
+                name,
+                normalizedRole,
+                email,
+                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null
+        );
         return userRepository.save(dto, hashed);
     }
 
@@ -95,7 +107,7 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
     }
 
     @Override
-    public AuthTokenDTO handleGoogleOAuthCallback(String code, String state) {
+    public OAuthCallbackResultDTO handleGoogleOAuthCallback(String code, String state) {
         if (!oauth2Port.validateAndConsumeState(state)) {
             throw new IllegalArgumentException("Invalid or expired OAuth state");
         }
@@ -103,15 +115,53 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
         String email = (String) tokens.get("email");
         String name  = (String) tokens.get("name");
 
-        UserDTO user = userRepository.findByEmail(email);
-        if (user == null) {
-            // Auto-register as BURUH - admin can re-assign role later
-            String username = email.split("@")[0];
-            UserDTO newUser = new UserDTO(null, username, name, UserRole.BURUH.name(), email);
-            user = userRepository.save(newUser, null);
+        if (email == null || email.isBlank() || name == null || name.isBlank()) {
+            throw new IllegalStateException("Incomplete user info from Google OAuth");
         }
-        String token = jwtService.generateToken(user.userId().toString(), user.role());
-        return new AuthTokenDTO(token, user.role());
+
+        UserDTO user = userRepository.findByEmail(email);
+        if (user != null) {
+            String token = jwtService.generateToken(user.userId().toString(), user.role());
+            return OAuthCallbackResultDTO.authenticated(token, user.role());
+        }
+
+        String registrationToken = jwtService.generateOAuthRegistrationToken(email, name);
+        return OAuthCallbackResultDTO.registrationRequired(registrationToken, email, name);
+    }
+
+    @Override
+    public AuthTokenDTO completeGoogleOAuthRegistration(String registrationToken, String role, String mandorCertificationNumber) {
+        String normalizedRole = normalizeRole(role);
+        validateRoleNotAdmin(normalizedRole);
+        String normalizedCertificationNumber = normalizeMandorCertificationNumber(mandorCertificationNumber);
+        validateMandorCertificationForRegistration(normalizedRole, normalizedCertificationNumber);
+
+        OAuthPendingRegistrationDTO pendingRegistration;
+        try {
+            pendingRegistration = jwtService.extractOAuthPendingRegistration(registrationToken);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid or expired registration token");
+        }
+
+        UserDTO existing = userRepository.findByEmail(pendingRegistration.email());
+        if (existing != null) {
+            String token = jwtService.generateToken(existing.userId().toString(), existing.role());
+            return new AuthTokenDTO(token, existing.role());
+        }
+
+        String username = pendingRegistration.email().split("@")[0];
+        UserDTO newUser = new UserDTO(
+                null,
+                username,
+                pendingRegistration.name(),
+                normalizedRole,
+                pendingRegistration.email(),
+                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null
+        );
+
+        UserDTO saved = userRepository.save(newUser, null);
+        String token = jwtService.generateToken(saved.userId().toString(), saved.role());
+        return new AuthTokenDTO(token, saved.role());
     }
 
     @Override
@@ -120,12 +170,33 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
     }
 
     @Override
-    public UserDTO editUser(UUID userId, String name, String role, String email) {
+    public UserDTO editUser(UUID userId, String name, String role, String email, String mandorCertificationNumber) {
         UserDTO existing = getExistingUser(userId);
         if (UserRole.ADMIN.name().equals(existing.role())) {
             throw new IllegalStateException("Cannot edit another admin account");
         }
-        UserDTO updated = new UserDTO(existing.userId(), existing.username(), name, role, email);
+        String normalizedRole = normalizeRole(role);
+        String normalizedCertificationNumber = normalizeMandorCertificationNumber(mandorCertificationNumber);
+        String effectiveCertificationNumber;
+
+        if (UserRole.MANDOR.name().equals(normalizedRole)) {
+            effectiveCertificationNumber = normalizedCertificationNumber != null
+                    ? normalizedCertificationNumber
+                    : normalizeMandorCertificationNumber(existing.mandorCertificationNumber());
+        } else {
+            effectiveCertificationNumber = null;
+        }
+
+        validateMandorCertificationForRegistration(normalizedRole, effectiveCertificationNumber);
+
+        UserDTO updated = new UserDTO(
+                existing.userId(),
+                existing.username(),
+                name,
+                normalizedRole,
+                email,
+                effectiveCertificationNumber
+        );
         return userRepository.save(updated, userRepository.findPasswordHashByEmail(existing.email()));
     }
 
@@ -151,8 +222,6 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
         if (!UserRole.MANDOR.name().equals(mandor.role())) {
             throw new IllegalArgumentException("Target user is not a MANDOR");
         }
-        // Persist the assignment via a dedicated update; UserDTO carries mandorId via save
-        UserDTO updated = new UserDTO(buruh.userId(), buruh.username(), buruh.name(), buruh.role(), buruh.email());
         userRepository.saveBuruhMandorAssignment(buruhId, mandorId);
         eventPublisher.publishEvent(new BuruhAssignedEvent(buruhId, mandorId));
     }
@@ -178,6 +247,27 @@ public AuthTokenDTO loginWithEmail(String email, String password) {
     private void validateRoleNotAdmin(String role) {
         if (UserRole.ADMIN.name().equals(role)) {
             throw new IllegalArgumentException("Cannot self-register as ADMIN");
+        }
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Role is required");
+        }
+        return role.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeMandorCertificationNumber(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void validateMandorCertificationForRegistration(String role, String mandorCertificationNumber) {
+        if (UserRole.MANDOR.name().equals(role) && mandorCertificationNumber == null) {
+            throw new IllegalArgumentException("Nomor sertifikasi mandor wajib diisi");
         }
     }
 

@@ -31,7 +31,7 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
     public PanenDTO findById(UUID id) {
         // Mengembalikan null sesuai aturan "API Conventions" di README/agent.md 
         // agar Use Case yang melempar EntityNotFoundException, bukan layer ini.
-        return jpaRepository.findById(id)
+        return jpaRepository.findByIdWithPhotos(id)
                 .map(mapper::entityToDto)
                 .orElse(null);
     }

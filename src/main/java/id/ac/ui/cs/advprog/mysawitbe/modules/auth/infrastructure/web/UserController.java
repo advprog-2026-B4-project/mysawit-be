@@ -42,6 +42,15 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(user));
     }
 
+    /** GET /api/users/me */
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANDOR', 'BURUH', 'SUPIR')")
+    public ResponseEntity<ApiResponse<UserDTO>> getCurrentUser(
+            @RequestAttribute("userId") UUID userId) {
+        UserDTO user = userQueryUseCase.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+
     /** PUT /api/users/{userId} */
     @PutMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -49,7 +58,7 @@ public class UserController {
             @PathVariable UUID userId,
             @RequestBody UserDTO body) {
         UserDTO updated = authCommandUseCase.editUser(
-                userId, body.name(), body.role(), body.email());
+            userId, body.name(), body.role(), body.email(), body.mandorCertificationNumber());
         return ResponseEntity.ok(ApiResponse.success(updated));
     }
 

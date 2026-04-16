@@ -1,11 +1,12 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.KebunDTO;
-import org.springframework.security.access.prepost.PreAuthorize;
-
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.KebunDTO;
 
 /**
  * Use case interface for kebun read/query operations.
@@ -36,4 +37,6 @@ public interface KebunQueryUseCase {
      */
     @PreAuthorize("hasRole('ADMIN')")
     boolean validateCoordinates(int lat, int lng);
+
+    UUID findKebunIdByMandorId(UUID mandorId);
 }

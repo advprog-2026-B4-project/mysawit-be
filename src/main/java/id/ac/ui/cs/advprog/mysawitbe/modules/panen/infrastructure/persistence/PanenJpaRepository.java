@@ -33,4 +33,8 @@ public interface PanenJpaRepository extends JpaRepository<PanenEntity, UUID> {
     // Pencarian dengan filter tanggal (digunakan untuk fallback data Mandor)
     @Query("SELECT p FROM PanenEntity p WHERE (:date IS NULL OR p.harvestDate = :date)")
     List<PanenEntity> findAllWithDateFilter(@Param("date") LocalDate date);
+
+    @Query("SELECT p FROM PanenEntity p WHERE p.kebunId = :kebunId " +
+           "AND (:date IS NULL OR p.harvestDate = :date)")
+    List<PanenEntity> findByKebunIdAndDateFilter(@Param("kebunId") UUID kebunId, @Param("date") LocalDate date);
 }

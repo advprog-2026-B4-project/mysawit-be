@@ -35,6 +35,11 @@ public class UserQueryUseCaseImpl implements UserQueryUseCase {
     }
 
     @Override
+    public UUID getMandorIdByBuruhId(UUID buruhId) {
+        return userRepository.findMandorIdByBuruhId(buruhId);
+    }
+
+    @Override
     public boolean verifyUserExists(UUID userId) {
         return userRepository.existsById(userId);
     }

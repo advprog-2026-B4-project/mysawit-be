@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 /**
  * Immutable data transfer object for panen (harvest) data.
  * weight: stored in grams to maintain precision.
@@ -20,6 +22,8 @@ public record PanenDTO(
         String status,
         String rejectionReason,
         List<PhotoDTO> photos,
+        
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDateTime timestamp
 ) {
     /**

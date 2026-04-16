@@ -74,4 +74,12 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                 .toList();
     }
 
+    @Override
+    public boolean hasPanenToday(UUID buruhId, LocalDate date) {
+        if (buruhId == null) throw new IllegalArgumentException("buruhId wajib diisi");
+        if (date == null) throw new IllegalArgumentException("date wajib diisi");
+        
+        // Memanggil Port Out untuk bertanya ke database
+        return repositoryPort.existsByBuruhIdAndDate(buruhId, date);
+    }
 }

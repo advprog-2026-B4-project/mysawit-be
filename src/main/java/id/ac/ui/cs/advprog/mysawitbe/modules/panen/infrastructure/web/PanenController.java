@@ -80,4 +80,15 @@ public class PanenController {
         List<PanenDTO> result = queryUseCase.listPanenByMandor(mandorId, buruhName, date);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @GetMapping("/checksubmission")
+    public ResponseEntity<ApiResponse<Boolean>> checkPanenToday(
+            @RequestAttribute("userId") UUID buruhId) {
+
+        boolean isSubmitted = queryUseCase.hasPanenToday(buruhId, LocalDate.now());
+        
+        return ResponseEntity.ok(ApiResponse.success(isSubmitted));
+    }
+
+
 }

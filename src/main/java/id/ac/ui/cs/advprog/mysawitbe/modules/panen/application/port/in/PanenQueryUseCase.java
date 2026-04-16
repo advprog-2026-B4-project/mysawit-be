@@ -1,10 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 
 /**
  * Use case interface for panen read/query operations.
@@ -19,6 +19,7 @@ public interface PanenQueryUseCase {
      */
     List<PanenDTO> getApprovedPanenByKebun(UUID kebunId);
 
+    boolean hasPanenToday(UUID buruhId, LocalDate date);
     /**
      * Returns panen history for a specific buruh.
      * All filter parameters are nullable (null = no filter).

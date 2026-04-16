@@ -20,18 +20,17 @@ public interface PanenJpaRepository extends JpaRepository<PanenEntity, UUID> {
 
     List<PanenEntity> findByKebunIdAndStatus(UUID kebunId, PanenStatus status);
 
-    // Filter dinamis untuk Buruh (Null-safe query)
     @Query("SELECT p FROM PanenEntity p WHERE p.buruhId = :buruhId " +
-           "AND (:startDate IS NULL OR p.harvestDate >= :startDate) " +
-           "AND (:endDate IS NULL OR p.harvestDate <= :endDate) " +
-           "AND (:status IS NULL OR p.status = :status)")
-    List<PanenEntity> findByBuruhIdWithFilters(@Param("buruhId") UUID buruhId,
-                                               @Param("startDate") LocalDate startDate,
-                                               @Param("endDate") LocalDate endDate,
-                                               @Param("status") PanenStatus status);
+       "AND (CAST(:startDate AS java.time.LocalDate) IS NULL OR p.harvestDate >= :startDate) " +
+       "AND (CAST(:endDate AS java.time.LocalDate) IS NULL OR p.harvestDate <= :endDate) " +
+       "AND (:status IS NULL OR p.status = :status)")
+       List<PanenEntity> findByBuruhIdWithFilters(@Param("buruhId") UUID buruhId,
+                                           @Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate,
+                                           @Param("status") PanenStatus status);
 
     // Pencarian dengan filter tanggal (digunakan untuk fallback data Mandor)
-    @Query("SELECT p FROM PanenEntity p WHERE (:date IS NULL OR p.harvestDate = :date)")
+    @Query("SELECT p FROM PanenEntity p WHERE (CAST(:date AS java.time.LocalDate) IS NULL OR p.harvestDate = :date)")
     List<PanenEntity> findAllWithDateFilter(@Param("date") LocalDate date);
 
     @Query("SELECT p FROM PanenEntity p WHERE p.kebunId = :kebunId " +

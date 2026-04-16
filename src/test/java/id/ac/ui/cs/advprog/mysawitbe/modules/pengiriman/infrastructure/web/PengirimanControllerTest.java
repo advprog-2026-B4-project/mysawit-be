@@ -2,8 +2,10 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,9 @@ class PengirimanControllerTest {
 
     @Mock
     private PengirimanQueryUseCase queryUseCase;
+
+    @Mock
+    private PengirimanCommandUseCase commandUseCase;
 
     @InjectMocks
     private PengirimanController controller;
@@ -130,5 +135,63 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.message").value(
                         "Kebun query dependency is unavailable. Integrasi modul kebun belum siap."
                 ));
+    }
+
+    @Test
+    void assignSupirForDelivery_returns201WithCreatedDelivery() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID supirId = UUID.randomUUID();
+        UUID panenA = UUID.randomUUID();
+
+        when(commandUseCase.assignSupirForDelivery(mandorId, supirId, List.of(panenA)))
+                .thenReturn(new PengirimanDTO(
+                        UUID.randomUUID(),
+                        supirId,
+                        null,
+                        mandorId,
+                        null,
+                        "ASSIGNED",
+                        180000,
+                        0,
+                        null,
+                        List.of(panenA),
+                        LocalDateTime.of(2026, 4, 12, 10, 0)
+                ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman")
+                        .requestAttr("userId", mandorId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "supirId": "%s",
+                                  "panenIds": ["%s"]
+                                }
+                                """.formatted(supirId, panenA)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("ASSIGNED"))
+                .andExpect(jsonPath("$.data.totalWeight").value(180000));
+    }
+
+    @Test
+    void listAssignablePanenForMandor_returnsApprovedPanenOptions() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID panenId = UUID.randomUUID();
+
+        when(queryUseCase.listAssignablePanenForMandor(mandorId))
+                .thenReturn(List.of(new AssignablePanenDTO(
+                        panenId,
+                        UUID.randomUUID(),
+                        "Buruh A",
+                        "Panen pagi",
+                        175000,
+                        LocalDateTime.of(2026, 4, 12, 8, 30)
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/panen")
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].panenId").value(panenId.toString()))
+                .andExpect(jsonPath("$.data[0].weight").value(175000));
     }
 }

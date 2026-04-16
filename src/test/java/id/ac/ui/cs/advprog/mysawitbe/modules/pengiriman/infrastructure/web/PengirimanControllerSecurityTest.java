@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +42,16 @@ class PengirimanControllerSecurityTest {
         }
 
         @Bean
-        PengirimanController pengirimanController(PengirimanQueryUseCase pengirimanQueryUseCase) {
-            return new PengirimanController(pengirimanQueryUseCase);
+        PengirimanCommandUseCase pengirimanCommandUseCase() {
+            return mock(PengirimanCommandUseCase.class);
+        }
+
+        @Bean
+        PengirimanController pengirimanController(
+                PengirimanQueryUseCase pengirimanQueryUseCase,
+                PengirimanCommandUseCase pengirimanCommandUseCase
+        ) {
+            return new PengirimanController(pengirimanQueryUseCase, pengirimanCommandUseCase);
         }
     }
 

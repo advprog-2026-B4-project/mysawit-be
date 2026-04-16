@@ -2,9 +2,13 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignDeliveryRequestDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -12,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,6 +33,17 @@ import java.util.UUID;
 public class PengirimanController {
 
     private final PengirimanQueryUseCase queryUseCase;
+    private final PengirimanCommandUseCase commandUseCase;
+
+    @PostMapping
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<PengirimanDTO>> assignSupirForDelivery(
+            @RequestAttribute("userId") UUID mandorId,
+            @Valid @RequestBody AssignDeliveryRequestDTO request
+    ) {
+        PengirimanDTO result = commandUseCase.assignSupirForDelivery(mandorId, request.supirId(), request.panenIds());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(result));
+    }
 
     @GetMapping("/supir")
     @PreAuthorize("hasRole('SUPIR')")
@@ -46,6 +63,15 @@ public class PengirimanController {
             @RequestParam(required = false) String searchNama
     ) {
         List<AssignedSupirDTO> result = queryUseCase.listAssignedSupirForMandor(mandorId, searchNama);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/mandor/panen")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<List<AssignablePanenDTO>>> listAssignablePanenForMandor(
+            @RequestAttribute("userId") UUID mandorId
+    ) {
+        List<AssignablePanenDTO> result = queryUseCase.listAssignablePanenForMandor(mandorId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

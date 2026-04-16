@@ -3,9 +3,12 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +39,9 @@ class PengirimanQueryUseCaseImplTest {
 
     @Mock
     private KebunQueryUseCase kebunQueryUseCase;
+
+    @Mock
+    private PanenQueryUseCase panenQueryUseCase;
 
     @InjectMocks
     private PengirimanQueryUseCaseImpl service;
@@ -133,5 +139,27 @@ class PengirimanQueryUseCaseImplTest {
 
         assertThat(result).isEmpty();
         verify(kebunQueryUseCase).getSupirListByMandorId(mandorId);
+    }
+
+    @Test
+    void listAssignablePanenForMandor_returnsOnlyApprovedPanenThatAreNotAssigned() {
+        UUID mandorId = UUID.randomUUID();
+        UUID kebunId = UUID.randomUUID();
+        UUID panenA = UUID.randomUUID();
+        UUID panenB = UUID.randomUUID();
+
+        when(kebunQueryUseCaseProvider.getIfAvailable()).thenReturn(kebunQueryUseCase);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
+        when(panenQueryUseCase.getApprovedPanenByKebun(kebunId)).thenReturn(List.of(
+                new PanenDTO(panenA, UUID.randomUUID(), "Buruh A", kebunId, "Panen A", 180000, "APPROVED", null, List.of(), LocalDateTime.now()),
+                new PanenDTO(panenB, UUID.randomUUID(), "Buruh B", kebunId, "Panen B", 120000, "APPROVED", null, List.of(), LocalDateTime.now())
+        ));
+        when(repository.findAssignedPanenIds(List.of(panenA, panenB))).thenReturn(List.of(panenB));
+
+        List<AssignablePanenDTO> result = service.listAssignablePanenForMandor(mandorId);
+
+        assertThat(result)
+                .extracting(AssignablePanenDTO::panenId)
+                .containsExactly(panenA);
     }
 }

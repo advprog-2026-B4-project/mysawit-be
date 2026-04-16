@@ -247,4 +247,63 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
                 .andExpect(jsonPath("$.data[0].status").value("TIBA"));
     }
+
+    @Test
+    void mandorApproveDelivery_returnsApprovedStatus() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(commandUseCase.mandorApproveDelivery(pengirimanId, mandorId))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        UUID.randomUUID(),
+                        null,
+                        mandorId,
+                        null,
+                        "APPROVED_MANDOR",
+                        200000,
+                        0,
+                        null,
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 12, 13, 0)
+                ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/approve", pengirimanId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
+    }
+
+    @Test
+    void mandorRejectDelivery_returnsRejectedStatusWithReason() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(commandUseCase.mandorRejectDelivery(pengirimanId, mandorId, "Muatan rusak"))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        UUID.randomUUID(),
+                        null,
+                        mandorId,
+                        null,
+                        "REJECTED_MANDOR",
+                        200000,
+                        0,
+                        "Muatan rusak",
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 12, 13, 15)
+                ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/reject", pengirimanId)
+                        .requestAttr("userId", mandorId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "reason": "Muatan rusak"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("REJECTED_MANDOR"))
+                .andExpect(jsonPath("$.data.statusReason").value("Muatan rusak"));
+    }
 }

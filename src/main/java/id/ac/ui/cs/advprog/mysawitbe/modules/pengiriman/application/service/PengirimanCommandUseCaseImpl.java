@@ -5,15 +5,18 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQuer
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.function.Consumer;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -99,12 +102,36 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
 
     @Override
     public PengirimanDTO mandorApproveDelivery(UUID pengirimanId, UUID mandorId) {
-        throw new UnsupportedOperationException("Milestone 50 mandor approval belum diaktifkan di commit ini.");
+        PengirimanDTO current = requirePengiriman(pengirimanId);
+        ensureMandorOwnership(current, mandorId);
+        ensureStatus(current, PengirimanStatus.TIBA, "Mandor hanya bisa menyetujui pengiriman yang sudah TIBA.");
+
+        PengirimanDTO saved = saveUpdated(current, builder -> {
+            builder.status(PengirimanStatus.APPROVED_MANDOR.name());
+            builder.acceptedWeight(0);
+            builder.statusReason(null);
+        });
+
+        eventPublisher.publishEvent(new PengirimanApprovedByMandorEvent(
+                saved.pengirimanId(),
+                saved.supirId(),
+                saved.totalWeight()
+        ));
+        return saved;
     }
 
     @Override
     public PengirimanDTO mandorRejectDelivery(UUID pengirimanId, UUID mandorId, String reason) {
-        throw new UnsupportedOperationException("Milestone 50 mandor rejection belum diaktifkan di commit ini.");
+        String normalizedReason = normalizeRequiredReason(reason);
+        PengirimanDTO current = requirePengiriman(pengirimanId);
+        ensureMandorOwnership(current, mandorId);
+        ensureStatus(current, PengirimanStatus.TIBA, "Mandor hanya bisa menolak pengiriman yang sudah TIBA.");
+
+        return saveUpdated(current, builder -> {
+            builder.status(PengirimanStatus.REJECTED_MANDOR.name());
+            builder.acceptedWeight(0);
+            builder.statusReason(normalizedReason);
+        });
     }
 
     @Override
@@ -127,6 +154,32 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         }
     }
 
+    private PengirimanDTO requirePengiriman(UUID pengirimanId) {
+        PengirimanDTO dto = repository.findById(pengirimanId);
+        if (dto == null) {
+            throw new EntityNotFoundException("Pengiriman not found: " + pengirimanId);
+        }
+        return dto;
+    }
+
+    private void ensureMandorOwnership(PengirimanDTO current, UUID mandorId) {
+        if (mandorId == null || !mandorId.equals(current.mandorId())) {
+            throw new IllegalArgumentException("Mandor tidak berhak memproses pengiriman ini.");
+        }
+    }
+
+    private void ensureStatus(PengirimanDTO current, PengirimanStatus expected, String message) {
+        if (parseStatus(current.status()) != expected) {
+            throw new IllegalStateException(message);
+        }
+    }
+
+    private PengirimanDTO saveUpdated(PengirimanDTO current, Consumer<PengirimanBuilder> customizer) {
+        PengirimanBuilder builder = PengirimanBuilder.from(current);
+        customizer.accept(builder);
+        return repository.save(builder.build());
+    }
+
     private List<UUID> normalizePanenIds(List<UUID> panenIds) {
         if (panenIds == null || panenIds.isEmpty()) {
             throw new IllegalArgumentException("Panen IDs are required");
@@ -139,5 +192,89 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             uniquePanenIds.add(panenId);
         }
         return List.copyOf(uniquePanenIds);
+    }
+
+    private PengirimanStatus parseStatus(String status) {
+        try {
+            return PengirimanStatus.valueOf(status);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Unknown pengiriman status: " + status);
+        }
+    }
+
+    private String normalizeRequiredReason(String reason) {
+        String normalized = normalizeOptionalReason(reason);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Reason is required.");
+        }
+        return normalized;
+    }
+
+    private String normalizeOptionalReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static final class PengirimanBuilder {
+        private final UUID pengirimanId;
+        private final UUID supirId;
+        private final String supirName;
+        private final UUID mandorId;
+        private final String mandorName;
+        private String status;
+        private final int totalWeight;
+        private int acceptedWeight;
+        private String statusReason;
+        private final List<UUID> panenIds;
+        private final LocalDateTime timestamp;
+
+        private PengirimanBuilder(PengirimanDTO source) {
+            this.pengirimanId = source.pengirimanId();
+            this.supirId = source.supirId();
+            this.supirName = source.supirName();
+            this.mandorId = source.mandorId();
+            this.mandorName = source.mandorName();
+            this.status = source.status();
+            this.totalWeight = source.totalWeight();
+            this.acceptedWeight = source.acceptedWeight();
+            this.statusReason = source.statusReason();
+            this.panenIds = source.panenIds();
+            this.timestamp = source.timestamp();
+        }
+
+        static PengirimanBuilder from(PengirimanDTO source) {
+            return new PengirimanBuilder(source);
+        }
+
+        void status(String status) {
+            this.status = status;
+        }
+
+        void acceptedWeight(int acceptedWeight) {
+            this.acceptedWeight = acceptedWeight;
+        }
+
+        void statusReason(String statusReason) {
+            this.statusReason = statusReason;
+        }
+
+        PengirimanDTO build() {
+            return new PengirimanDTO(
+                    pengirimanId,
+                    supirId,
+                    supirName,
+                    mandorId,
+                    mandorName,
+                    status,
+                    totalWeight,
+                    acceptedWeight,
+                    statusReason,
+                    panenIds,
+                    timestamp
+            );
+        }
     }
 }

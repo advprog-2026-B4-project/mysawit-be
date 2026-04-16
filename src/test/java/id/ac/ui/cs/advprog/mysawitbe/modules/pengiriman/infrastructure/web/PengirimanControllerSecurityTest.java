@@ -61,6 +61,9 @@ class PengirimanControllerSecurityTest {
     @org.springframework.beans.factory.annotation.Autowired
     private PengirimanQueryUseCase pengirimanQueryUseCase;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private PengirimanCommandUseCase pengirimanCommandUseCase;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -148,5 +151,31 @@ class PengirimanControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
                 .andExpect(jsonPath("$.data[0].status").value("TIBA"));
+    }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000010",
+            roles = "MANDOR"
+    )
+    void mandorApproveDelivery_withMandorAuthentication_returns200() throws Exception {
+        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(pengirimanCommandUseCase.mandorApproveDelivery(pengirimanId, mandorId))
+                .thenReturn(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        pengirimanId,
+                        UUID.randomUUID(),
+                        mandorId,
+                        "APPROVED_MANDOR",
+                        100000,
+                        0,
+                        java.time.LocalDateTime.now()
+                ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/approve", pengirimanId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
     }
 }

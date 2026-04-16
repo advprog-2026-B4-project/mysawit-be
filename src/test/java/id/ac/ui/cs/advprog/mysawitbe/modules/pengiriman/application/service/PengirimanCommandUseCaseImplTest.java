@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQuer
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +23,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -112,5 +113,40 @@ class PengirimanCommandUseCaseImplTest {
         assertThatThrownBy(() -> service.assignSupirForDelivery(mandorId, supirId, List.of(panenA, panenB)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("400 kg");
+    }
+
+    @Test
+    void mandorApproveDelivery_fromTiba_updatesStatusAndPublishesEvent() {
+        UUID pengirimanId = UUID.randomUUID();
+        PengirimanDTO current = new PengirimanDTO(
+                pengirimanId,
+                supirId,
+                null,
+                mandorId,
+                null,
+                PengirimanStatus.TIBA.name(),
+                250000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findById(pengirimanId)).thenReturn(current);
+        when(repository.save(any(PengirimanDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PengirimanDTO result = service.mandorApproveDelivery(pengirimanId, mandorId);
+
+        assertThat(result.status()).isEqualTo(PengirimanStatus.APPROVED_MANDOR.name());
+        verify(eventPublisher).publishEvent(any(PengirimanApprovedByMandorEvent.class));
+    }
+
+    @Test
+    void mandorRejectDelivery_withoutReason_throwsIllegalArgumentException() {
+        UUID pengirimanId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.mandorRejectDelivery(pengirimanId, mandorId, "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Reason is required");
     }
 }

@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Assigned
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.RejectDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
@@ -92,6 +93,27 @@ public class PengirimanController {
             @PathVariable UUID supirId
     ) {
         List<PengirimanDTO> result = queryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/{pengirimanId}/approve")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<PengirimanDTO>> mandorApproveDelivery(
+            @PathVariable UUID pengirimanId,
+            @RequestAttribute("userId") UUID mandorId
+    ) {
+        PengirimanDTO result = commandUseCase.mandorApproveDelivery(pengirimanId, mandorId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/{pengirimanId}/reject")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<PengirimanDTO>> mandorRejectDelivery(
+            @PathVariable UUID pengirimanId,
+            @RequestAttribute("userId") UUID mandorId,
+            @Valid @RequestBody RejectDeliveryRequestDTO request
+    ) {
+        PengirimanDTO result = commandUseCase.mandorRejectDelivery(pengirimanId, mandorId, request.reason());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

@@ -75,6 +75,15 @@ public class PengirimanController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @GetMapping("/mandor/active")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<List<PengirimanDTO>>> listActiveDeliveriesByMandor(
+            @RequestAttribute("userId") UUID mandorId
+    ) {
+        List<PengirimanDTO> result = queryUseCase.listActiveDeliveriesByMandor(mandorId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @ExceptionHandler(KebunQueryDependencyUnavailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleKebunQueryDependencyUnavailable(
             KebunQueryDependencyUnavailableException ex

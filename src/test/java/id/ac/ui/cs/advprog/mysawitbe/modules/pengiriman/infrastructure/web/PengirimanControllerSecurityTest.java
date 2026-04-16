@@ -97,4 +97,29 @@ class PengirimanControllerSecurityTest {
 
         verify(pengirimanQueryUseCase).listAssignedSupirForMandor(mandorId, "ega");
     }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000010",
+            roles = "MANDOR"
+    )
+    void listActiveDeliveriesByMandor_withMandorAuthentication_returns200() throws Exception {
+        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
+
+        when(pengirimanQueryUseCase.listActiveDeliveriesByMandor(mandorId))
+                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        mandorId,
+                        "ASSIGNED",
+                        100000,
+                        0,
+                        java.time.LocalDateTime.now()
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/active")
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("ASSIGNED"));
+    }
 }

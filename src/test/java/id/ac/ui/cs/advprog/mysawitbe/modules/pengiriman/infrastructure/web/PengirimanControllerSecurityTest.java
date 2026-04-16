@@ -122,4 +122,31 @@ class PengirimanControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].status").value("ASSIGNED"));
     }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000010",
+            roles = "MANDOR"
+    )
+    void listDeliveriesOfSupirByMandor_withMandorAuthentication_returns200() throws Exception {
+        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
+        UUID supirId = UUID.randomUUID();
+
+        when(pengirimanQueryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId))
+                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        UUID.randomUUID(),
+                        supirId,
+                        mandorId,
+                        "TIBA",
+                        100000,
+                        0,
+                        java.time.LocalDateTime.now()
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/supir/{supirId}/mandor", supirId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
+                .andExpect(jsonPath("$.data[0].status").value("TIBA"));
+    }
 }

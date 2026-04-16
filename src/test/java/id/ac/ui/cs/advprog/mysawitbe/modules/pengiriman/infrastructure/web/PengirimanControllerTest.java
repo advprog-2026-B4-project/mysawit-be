@@ -220,4 +220,31 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.data[0].status").value("IN_TRANSIT"))
                 .andExpect(jsonPath("$.data[0].mandorId").value(mandorId.toString()));
     }
+
+    @Test
+    void listDeliveriesOfSupirByMandor_returnsSupirHistory() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID supirId = UUID.randomUUID();
+
+        when(queryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId))
+                .thenReturn(List.of(new PengirimanDTO(
+                        UUID.randomUUID(),
+                        supirId,
+                        null,
+                        mandorId,
+                        null,
+                        "TIBA",
+                        160000,
+                        0,
+                        null,
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 12, 12, 45)
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/supir/{supirId}/mandor", supirId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
+                .andExpect(jsonPath("$.data[0].status").value("TIBA"));
+    }
 }

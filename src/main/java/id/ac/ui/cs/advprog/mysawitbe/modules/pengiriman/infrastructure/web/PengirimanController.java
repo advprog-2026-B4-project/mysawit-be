@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -81,6 +82,16 @@ public class PengirimanController {
             @RequestAttribute("userId") UUID mandorId
     ) {
         List<PengirimanDTO> result = queryUseCase.listActiveDeliveriesByMandor(mandorId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/supir/{supirId}/mandor")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<List<PengirimanDTO>>> listDeliveriesOfSupirByMandor(
+            @RequestAttribute("userId") UUID mandorId,
+            @PathVariable UUID supirId
+    ) {
+        List<PengirimanDTO> result = queryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

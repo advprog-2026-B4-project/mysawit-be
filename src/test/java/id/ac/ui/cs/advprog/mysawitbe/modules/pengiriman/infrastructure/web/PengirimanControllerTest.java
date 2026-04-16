@@ -21,6 +21,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -69,6 +70,8 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
                 .andExpect(jsonPath("$.data[0].status").value("ASSIGNED"));
+
+        verify(queryUseCase).listDeliveriesBySupir(supirId, null, null);
     }
 
     @Test
@@ -107,6 +110,8 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].supirId").value(supir.supirId().toString()))
                 .andExpect(jsonPath("$.data[0].name").value("Ega Jawa"));
+
+        verify(queryUseCase).listAssignedSupirForMandor(mandorId, "ega");
     }
 
     @Test

@@ -90,5 +90,16 @@ public class PanenController {
         return ResponseEntity.ok(ApiResponse.success(isSubmitted));
     }
 
+    @GetMapping("/buruh/{buruhId}")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<List<PanenDTO>>> getPanenByBuruhForMandor(
+            @PathVariable UUID buruhId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) String status) {
+                List<PanenDTO> result = queryUseCase.listPanenByBuruh(buruhId, startDate, endDate, status);
+                return ResponseEntity.ok(ApiResponse.success(result));
+            }
+
 
 }

@@ -38,7 +38,16 @@ public class PanenQueryImpl implements PanenQueryUseCase {
 
     @Override
     public List<PanenDTO> listPanenByBuruh(UUID buruhId, LocalDate startDate, LocalDate endDate, String status) {
-        return repositoryPort.findByBuruhId(buruhId, startDate, endDate, status);
+        String buruhName = userQueryUseCase.getUserById(buruhId).name();
+        return repositoryPort.findByBuruhId(buruhId, startDate, endDate, status)
+                .stream()
+                .map(panen -> new PanenDTO(
+                        panen.panenId(), panen.buruhId(), buruhName,
+                        panen.kebunId(), panen.description(), panen.weight(),
+                        panen.status(), panen.rejectionReason(), panen.photos(),
+                        panen.timestamp()
+                ))
+                .toList();
     }
 
     @Override 

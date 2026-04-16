@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.CreatePanenRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.ReviewPanenRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import jakarta.persistence.EntityNotFoundException;
@@ -192,5 +194,26 @@ public class PanenController {
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
         }
+    }
+
+    @PatchMapping("/{panenId}/review")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<PanenDTO>> reviewPanen(
+            @PathVariable UUID panenId,
+            @RequestAttribute("userId") UUID mandorId,
+            @Valid @RequestBody ReviewPanenRequestDTO request) {
+
+        PanenDTO result = switch (request.action().toUpperCase()) {
+            case "APPROVE" -> commandUseCase.approvePanen(panenId, mandorId);
+            case "REJECT"  -> {
+                if (request.rejectionReason() == null || request.rejectionReason().isBlank()) {
+                    throw new IllegalArgumentException("Alasan penolakan wajib diisi.");
+                }
+                yield commandUseCase.rejectPanen(panenId, mandorId, request.rejectionReason());
+            }
+            default -> throw new IllegalArgumentException("Action tidak valid. Gunakan APPROVE atau REJECT.");
+        };
+
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

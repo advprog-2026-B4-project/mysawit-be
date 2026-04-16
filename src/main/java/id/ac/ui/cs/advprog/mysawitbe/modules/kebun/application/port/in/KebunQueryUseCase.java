@@ -23,6 +23,9 @@ public interface KebunQueryUseCase {
     @PreAuthorize("hasRole('ADMIN')")
     List<UserDTO> getSupirList(UUID kebunId);
 
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('MANDOR') and #mandorId.toString() == authentication.name)")
+    List<UserDTO> getSupirListByMandorId(UUID mandorId);
+
     @PreAuthorize("hasRole('ADMIN')")
     List<UserDTO> getBuruhList(UUID kebunId);
 

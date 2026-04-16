@@ -251,4 +251,20 @@ class KebunControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
+
+    @Test
+    void edit_invalidRequest_returns400() throws Exception {
+        // Mencakup: EditKebunRequestDTO validation
+        UUID kebunId = UUID.randomUUID();
+        // Request dengan nama kosong dan luas negatif
+        id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.EditKebunRequestDTO invalidBody =
+                new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.EditKebunRequestDTO(
+                        "", -5, List.of()
+                );
+
+        mockMvc.perform(put("/api/kebun/" + kebunId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidBody)))
+                .andExpect(status().isBadRequest());
+    }
 }

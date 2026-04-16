@@ -13,11 +13,11 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,8 +26,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -119,41 +119,6 @@ class PengirimanCommandUseCaseImplTest {
     }
 
     @Test
-    void mandorApproveDelivery_fromTiba_updatesStatusAndPublishesEvent() {
-        UUID pengirimanId = UUID.randomUUID();
-        PengirimanDTO current = new PengirimanDTO(
-                pengirimanId,
-                supirId,
-                null,
-                mandorId,
-                null,
-                PengirimanStatus.TIBA.name(),
-                250000,
-                0,
-                null,
-                List.of(UUID.randomUUID()),
-                LocalDateTime.now()
-        );
-
-        when(repository.findById(pengirimanId)).thenReturn(current);
-        when(repository.save(any(PengirimanDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        PengirimanDTO result = service.mandorApproveDelivery(pengirimanId, mandorId);
-
-        assertThat(result.status()).isEqualTo(PengirimanStatus.APPROVED_MANDOR.name());
-        verify(eventPublisher).publishEvent(any(PengirimanApprovedByMandorEvent.class));
-    }
-
-    @Test
-    void mandorRejectDelivery_withoutReason_throwsIllegalArgumentException() {
-        UUID pengirimanId = UUID.randomUUID();
-
-        assertThatThrownBy(() -> service.mandorRejectDelivery(pengirimanId, mandorId, "   "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Reason is required");
-    }
-
-    @Test
     void updateDeliveryStatus_toTiba_publishesArrivalEvent() {
         UUID pengirimanId = UUID.randomUUID();
         PengirimanDTO current = new PengirimanDTO(
@@ -182,7 +147,43 @@ class PengirimanCommandUseCaseImplTest {
     }
 
     @Test
-    void adminProcessDelivery_reject_updatesDeliveryAndPublishesNormalizedEvent() {
+    void mandorApproveDelivery_fromTiba_updatesStatusAndPublishesEvent() {
+        UUID pengirimanId = UUID.randomUUID();
+        PengirimanDTO current = new PengirimanDTO(
+                pengirimanId,
+                supirId,
+                null,
+                mandorId,
+                null,
+                PengirimanStatus.TIBA.name(),
+                250000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findById(pengirimanId)).thenReturn(current);
+        when(repository.save(any(PengirimanDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PengirimanDTO result = service.mandorApproveDelivery(pengirimanId, mandorId);
+
+        assertThat(result.status()).isEqualTo(PengirimanStatus.APPROVED_MANDOR.name());
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(PengirimanApprovedByMandorEvent.class);
+    }
+
+    @Test
+    void mandorRejectDelivery_withoutReason_throwsIllegalArgumentException() {
+        UUID pengirimanId = UUID.randomUUID();
+        assertThatThrownBy(() -> service.mandorRejectDelivery(pengirimanId, mandorId, "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Reason is required");
+    }
+
+    @Test
+    void adminProcessDelivery_partialAccept_updatesDeliveryAndPublishesNormalizedEvent() {
         UUID pengirimanId = UUID.randomUUID();
         PengirimanDTO current = new PengirimanDTO(
                 pengirimanId,
@@ -204,19 +205,19 @@ class PengirimanCommandUseCaseImplTest {
         PengirimanDTO result = service.adminProcessDelivery(
                 pengirimanId,
                 UUID.randomUUID(),
-                0,
-                PengirimanStatus.REJECTED_ADMIN,
-                "Ditolak admin"
+                175000,
+                PengirimanStatus.PARTIAL,
+                "Sebagian sawit rusak"
         );
 
-        assertThat(result.status()).isEqualTo(PengirimanStatus.REJECTED_ADMIN.name());
-        assertThat(result.acceptedWeight()).isZero();
-        assertThat(result.statusReason()).isEqualTo("Ditolak admin");
+        assertThat(result.status()).isEqualTo(PengirimanStatus.PARTIAL.name());
+        assertThat(result.acceptedWeight()).isEqualTo(175000);
+        assertThat(result.statusReason()).isEqualTo("Sebagian sawit rusak");
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
         assertThat(eventCaptor.getValue())
                 .isInstanceOfSatisfying(PengirimanProcessedByAdminEvent.class, event ->
-                        assertThat(event.status()).isEqualTo("REJECTED"));
+                        assertThat(event.status()).isEqualTo("PARTIAL"));
     }
 }

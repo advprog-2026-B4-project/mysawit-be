@@ -18,13 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.function.Consumer;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,7 +37,6 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
     private final PengirimanRepositoryPort repository;
     private final KebunQueryUseCase kebunQueryUseCase;
     private final PanenQueryUseCase panenQueryUseCase;
-    @SuppressWarnings("unused")
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -199,6 +198,14 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
                     throw new IllegalArgumentException("Full approve tidak memerlukan alasan.");
                 }
             }
+            case PARTIAL -> {
+                if (acceptedWeight <= 0 || acceptedWeight >= current.totalWeight()) {
+                    throw new IllegalArgumentException("Partial accept harus menerima sebagian berat di antara 0 dan total pengiriman.");
+                }
+                if (normalizedReason == null) {
+                    throw new IllegalArgumentException("Alasan wajib diisi untuk partial accept.");
+                }
+            }
             case REJECTED_ADMIN -> {
                 if (acceptedWeight != 0) {
                     throw new IllegalArgumentException("Rejected delivery harus memiliki accepted weight 0.");
@@ -207,7 +214,6 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
                     throw new IllegalArgumentException("Alasan penolakan admin wajib diisi.");
                 }
             }
-            case PARTIAL -> throw new UnsupportedOperationException("Partial admin processing dipisah ke commit berikutnya.");
             default -> throw new IllegalArgumentException("Status admin tidak valid.");
         }
 
@@ -226,6 +232,14 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         return saved;
     }
 
+    private PengirimanDTO requirePengiriman(UUID pengirimanId) {
+        PengirimanDTO dto = repository.findById(pengirimanId);
+        if (dto == null) {
+            throw new EntityNotFoundException("Pengiriman not found: " + pengirimanId);
+        }
+        return dto;
+    }
+
     private void ensureSupirBelongsToMandorKebun(UUID mandorId, UUID supirId) {
         boolean exists = kebunQueryUseCase.getSupirListByMandorId(mandorId).stream()
                 .map(UserDTO::userId)
@@ -235,23 +249,15 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         }
     }
 
-    private PengirimanDTO requirePengiriman(UUID pengirimanId) {
-        PengirimanDTO dto = repository.findById(pengirimanId);
-        if (dto == null) {
-            throw new EntityNotFoundException("Pengiriman not found: " + pengirimanId);
+    private void ensureSupirOwnership(PengirimanDTO current, UUID supirId) {
+        if (supirId == null || !supirId.equals(current.supirId())) {
+            throw new IllegalArgumentException("Supir tidak berhak mengubah pengiriman ini.");
         }
-        return dto;
     }
 
     private void ensureMandorOwnership(PengirimanDTO current, UUID mandorId) {
         if (mandorId == null || !mandorId.equals(current.mandorId())) {
             throw new IllegalArgumentException("Mandor tidak berhak memproses pengiriman ini.");
-        }
-    }
-
-    private void ensureSupirOwnership(PengirimanDTO current, UUID supirId) {
-        if (supirId == null || !supirId.equals(current.supirId())) {
-            throw new IllegalArgumentException("Supir tidak berhak mengubah pengiriman ini.");
         }
     }
 
@@ -267,6 +273,14 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         return repository.save(builder.build());
     }
 
+    private PengirimanStatus parseStatus(String status) {
+        try {
+            return PengirimanStatus.valueOf(status);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Unknown pengiriman status: " + status);
+        }
+    }
+
     private List<UUID> normalizePanenIds(List<UUID> panenIds) {
         if (panenIds == null || panenIds.isEmpty()) {
             throw new IllegalArgumentException("Panen IDs are required");
@@ -279,14 +293,6 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             uniquePanenIds.add(panenId);
         }
         return List.copyOf(uniquePanenIds);
-    }
-
-    private PengirimanStatus parseStatus(String status) {
-        try {
-            return PengirimanStatus.valueOf(status);
-        } catch (RuntimeException ex) {
-            throw new IllegalStateException("Unknown pengiriman status: " + status);
-        }
     }
 
     private String normalizeRequiredReason(String reason) {
@@ -308,6 +314,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
     private String toEventStatus(PengirimanStatus status) {
         return switch (status) {
             case APPROVED_ADMIN -> "APPROVED";
+            case PARTIAL -> "PARTIAL";
             case REJECTED_ADMIN -> "REJECTED";
             default -> status.name().toUpperCase(Locale.ROOT);
         };

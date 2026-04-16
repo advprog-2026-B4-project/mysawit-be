@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Pengirim
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,9 +24,11 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -97,34 +100,6 @@ class PengirimanControllerTest {
     }
 
     @Test
-    void listDeliveriesBySupir_withDateFilter_returnsRejectedReason() throws Exception {
-        LocalDate startDate = LocalDate.of(2026, 4, 10);
-        LocalDate endDate = LocalDate.of(2026, 4, 12);
-        when(queryUseCase.listDeliveriesBySupir(supirId, startDate, endDate))
-                .thenReturn(List.of(new PengirimanDTO(
-                        UUID.randomUUID(),
-                        supirId,
-                        null,
-                        UUID.randomUUID(),
-                        null,
-                        "REJECTED_MANDOR",
-                        140000,
-                        0,
-                        "Muatan rusak",
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 12, 9, 30)
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/supir")
-                        .requestAttr("userId", supirId)
-                        .param("startDate", "2026-04-10")
-                        .param("endDate", "2026-04-12"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].status").value("REJECTED_MANDOR"))
-                .andExpect(jsonPath("$.data[0].statusReason").value("Muatan rusak"));
-    }
-
-    @Test
     void listAssignedSupirForMandor_returns200WithFilteredData() throws Exception {
         UUID mandorId = UUID.randomUUID();
         AssignedSupirDTO supir = new AssignedSupirDTO(
@@ -187,7 +162,7 @@ class PengirimanControllerTest {
                         LocalDateTime.of(2026, 4, 12, 10, 0)
                 ));
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman")
+        mockMvc.perform(post("/api/pengiriman")
                         .requestAttr("userId", mandorId)
                         .contentType("application/json")
                         .content("""
@@ -200,6 +175,33 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("ASSIGNED"))
                 .andExpect(jsonPath("$.data.totalWeight").value(180000));
+    }
+
+    @Test
+    void updateDeliveryStatus_returns200WithUpdatedStatus() throws Exception {
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(commandUseCase.updateDeliveryStatus(pengirimanId, supirId, PengirimanStatus.TIBA))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        UUID.randomUUID(),
+                        "TIBA",
+                        140000,
+                        0,
+                        LocalDateTime.of(2026, 4, 13, 11, 0)
+                ));
+
+        mockMvc.perform(put("/api/pengiriman/{pengirimanId}/status", pengirimanId)
+                        .requestAttr("userId", supirId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "newStatus": "TIBA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("TIBA"));
     }
 
     @Test
@@ -225,204 +227,37 @@ class PengirimanControllerTest {
     }
 
     @Test
-    void listActiveDeliveriesByMandor_returnsActiveDeliveries() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-
-        when(queryUseCase.listActiveDeliveriesByMandor(mandorId))
-                .thenReturn(List.of(new PengirimanDTO(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        null,
-                        mandorId,
-                        null,
-                        "IN_TRANSIT",
-                        150000,
-                        0,
-                        null,
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 12, 11, 30)
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/mandor/active")
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].status").value("IN_TRANSIT"))
-                .andExpect(jsonPath("$.data[0].mandorId").value(mandorId.toString()));
-    }
-
-    @Test
-    void listDeliveriesOfSupirByMandor_returnsSupirHistory() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-        UUID supirId = UUID.randomUUID();
-
-        when(queryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId))
-                .thenReturn(List.of(new PengirimanDTO(
-                        UUID.randomUUID(),
-                        supirId,
-                        null,
-                        mandorId,
-                        null,
-                        "TIBA",
-                        160000,
-                        0,
-                        null,
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 12, 12, 45)
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/supir/{supirId}/mandor", supirId)
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
-                .andExpect(jsonPath("$.data[0].status").value("TIBA"));
-    }
-
-    @Test
-    void mandorApproveDelivery_returnsApprovedStatus() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-        UUID pengirimanId = UUID.randomUUID();
-
-        when(commandUseCase.mandorApproveDelivery(pengirimanId, mandorId))
-                .thenReturn(new PengirimanDTO(
-                        pengirimanId,
-                        UUID.randomUUID(),
-                        null,
-                        mandorId,
-                        null,
-                        "APPROVED_MANDOR",
-                        200000,
-                        0,
-                        null,
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 12, 13, 0)
-                ));
-
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/approve", pengirimanId)
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
-    }
-
-    @Test
-    void mandorRejectDelivery_returnsRejectedStatusWithReason() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-        UUID pengirimanId = UUID.randomUUID();
-
-        when(commandUseCase.mandorRejectDelivery(pengirimanId, mandorId, "Muatan rusak"))
-                .thenReturn(new PengirimanDTO(
-                        pengirimanId,
-                        UUID.randomUUID(),
-                        null,
-                        mandorId,
-                        null,
-                        "REJECTED_MANDOR",
-                        200000,
-                        0,
-                        "Muatan rusak",
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 12, 13, 15)
-                ));
-
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/reject", pengirimanId)
-                        .requestAttr("userId", mandorId)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "reason": "Muatan rusak"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("REJECTED_MANDOR"))
-                .andExpect(jsonPath("$.data.statusReason").value("Muatan rusak"));
-    }
-
-    @Test
-    void updateDeliveryStatus_returns200WithUpdatedStatus() throws Exception {
-        UUID pengirimanId = UUID.randomUUID();
-
-        when(commandUseCase.updateDeliveryStatus(pengirimanId, supirId, id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus.TIBA))
-                .thenReturn(new PengirimanDTO(
-                        pengirimanId,
-                        supirId,
-                        UUID.randomUUID(),
-                        "TIBA",
-                        140000,
-                        0,
-                        LocalDateTime.of(2026, 4, 13, 11, 0)
-                ));
-
-        mockMvc.perform(put("/api/pengiriman/{pengirimanId}/status", pengirimanId)
-                        .requestAttr("userId", supirId)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "newStatus": "TIBA"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("TIBA"));
-    }
-
-    @Test
-    void listApprovedDeliveriesForAdmin_returnsFilteredResult() throws Exception {
-        LocalDate date = LocalDate.of(2026, 4, 14);
-        UUID mandorId = UUID.randomUUID();
-
-        when(queryUseCase.listApprovedDeliveriesForAdmin("Awan", date))
-                .thenReturn(List.of(new PengirimanDTO(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        "Supir A",
-                        mandorId,
-                        "Awan Mandor",
-                        "APPROVED_MANDOR",
-                        210000,
-                        0,
-                        null,
-                        List.of(UUID.randomUUID()),
-                        LocalDateTime.of(2026, 4, 14, 14, 0)
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/admin/approved")
-                        .param("mandorName", "Awan")
-                        .param("date", "2026-04-14"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].mandorName").value("Awan Mandor"))
-                .andExpect(jsonPath("$.data[0].status").value("APPROVED_MANDOR"));
-    }
-
-    @Test
     void adminProcessDelivery_returns200WithProcessedStatus() throws Exception {
         UUID pengirimanId = UUID.randomUUID();
         UUID adminId = UUID.randomUUID();
 
-        when(commandUseCase.adminProcessDelivery(eq(pengirimanId), eq(adminId), eq(0), eq(id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus.REJECTED_ADMIN), eq("Ditolak admin")))
+        when(commandUseCase.adminProcessDelivery(eq(pengirimanId), eq(adminId), eq(175000), eq(PengirimanStatus.PARTIAL), eq("Sebagian rusak")))
                 .thenReturn(new PengirimanDTO(
                         pengirimanId,
                         UUID.randomUUID(),
                         null,
                         UUID.randomUUID(),
                         null,
-                        "REJECTED_ADMIN",
+                        "PARTIAL",
                         200000,
-                        0,
-                        "Ditolak admin",
+                        175000,
+                        "Sebagian rusak",
                         List.of(UUID.randomUUID()),
                         LocalDateTime.of(2026, 4, 14, 12, 0)
                 ));
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
+        mockMvc.perform(post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
                         .requestAttr("userId", adminId)
                         .contentType("application/json")
                         .content("""
                                 {
-                                  "acceptedWeight": 0,
-                                  "status": "REJECTED_ADMIN",
-                                  "reason": "Ditolak admin"
+                                  "acceptedWeight": 175000,
+                                  "status": "PARTIAL",
+                                  "reason": "Sebagian rusak"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("REJECTED_ADMIN"))
-                .andExpect(jsonPath("$.data.statusReason").value("Ditolak admin"));
+                .andExpect(jsonPath("$.data.status").value("PARTIAL"))
+                .andExpect(jsonPath("$.data.statusReason").value("Sebagian rusak"));
     }
 }

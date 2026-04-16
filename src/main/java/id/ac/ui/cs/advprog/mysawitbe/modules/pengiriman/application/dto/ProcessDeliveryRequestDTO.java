@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 public record ProcessDeliveryRequestDTO(

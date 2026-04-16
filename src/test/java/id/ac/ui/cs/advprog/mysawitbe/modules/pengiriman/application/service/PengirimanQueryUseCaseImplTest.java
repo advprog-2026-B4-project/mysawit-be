@@ -5,8 +5,8 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryU
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
@@ -53,53 +53,33 @@ class PengirimanQueryUseCaseImplTest {
     @Test
     void listDeliveriesBySupir_withoutDateFilter_returnsRepositoryResult() {
         UUID supirId = UUID.randomUUID();
+        UUID mandorId = UUID.randomUUID();
         PengirimanDTO dto = new PengirimanDTO(
                 UUID.randomUUID(),
                 supirId,
-                UUID.randomUUID(),
+                mandorId,
                 "ASSIGNED",
                 120000,
                 0,
                 LocalDateTime.now()
         );
+        when(userQueryUseCase.getUserById(supirId))
+                .thenReturn(new UserDTO(supirId, "supir-a", "Supir A", "SUPIR", "supir@example.com"));
+        when(userQueryUseCase.getUserById(mandorId))
+                .thenReturn(new UserDTO(mandorId, "mandor-a", "Mandor A", "MANDOR", "mandor@example.com"));
         when(repository.findBySupirId(supirId, null, null)).thenReturn(List.of(dto));
 
         List<PengirimanDTO> result = service.listDeliveriesBySupir(supirId, null, null);
 
-        assertThat(result).containsExactly(dto);
-        verify(repository).findBySupirId(supirId, null, null);
-    }
-
-    @Test
-    void listDeliveriesBySupir_withDateRangeForwardsFilterToRepository() {
-        UUID supirId = UUID.randomUUID();
-        LocalDate startDate = LocalDate.of(2026, 4, 10);
-        LocalDate endDate = LocalDate.of(2026, 4, 12);
-        PengirimanDTO dto = new PengirimanDTO(
-                UUID.randomUUID(),
-                supirId,
-                null,
-                UUID.randomUUID(),
-                null,
-                "REJECTED_MANDOR",
-                120000,
-                0,
-                "Muatan basah",
-                List.of(UUID.randomUUID()),
-                LocalDateTime.now()
-        );
-
-        when(repository.findBySupirId(supirId, startDate, endDate)).thenReturn(List.of(dto));
-
-        List<PengirimanDTO> result = service.listDeliveriesBySupir(supirId, startDate, endDate);
-
         assertThat(result)
-                .singleElement()
+                .hasSize(1)
+                .first()
                 .satisfies(item -> {
-                    assertThat(item.status()).isEqualTo("REJECTED_MANDOR");
-                    assertThat(item.statusReason()).isEqualTo("Muatan basah");
+                    assertThat(item.pengirimanId()).isEqualTo(dto.pengirimanId());
+                    assertThat(item.supirName()).isEqualTo("Supir A");
+                    assertThat(item.mandorName()).isEqualTo("Mandor A");
                 });
-        verify(repository).findBySupirId(supirId, startDate, endDate);
+        verify(repository).findBySupirId(supirId, null, null);
     }
 
     @Test

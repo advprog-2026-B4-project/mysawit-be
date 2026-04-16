@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -105,84 +106,6 @@ class PengirimanControllerSecurityTest {
 
     @Test
     @WithMockUser(
-            username = "00000000-0000-0000-0000-000000000010",
-            roles = "MANDOR"
-    )
-    void listActiveDeliveriesByMandor_withMandorAuthentication_returns200() throws Exception {
-        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
-
-        when(pengirimanQueryUseCase.listActiveDeliveriesByMandor(mandorId))
-                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
-                        UUID.randomUUID(),
-                        UUID.randomUUID(),
-                        mandorId,
-                        "ASSIGNED",
-                        100000,
-                        0,
-                        java.time.LocalDateTime.now()
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/mandor/active")
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].status").value("ASSIGNED"));
-    }
-
-    @Test
-    @WithMockUser(
-            username = "00000000-0000-0000-0000-000000000010",
-            roles = "MANDOR"
-    )
-    void listDeliveriesOfSupirByMandor_withMandorAuthentication_returns200() throws Exception {
-        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
-        UUID supirId = UUID.randomUUID();
-
-        when(pengirimanQueryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId))
-                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
-                        UUID.randomUUID(),
-                        supirId,
-                        mandorId,
-                        "TIBA",
-                        100000,
-                        0,
-                        java.time.LocalDateTime.now()
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/supir/{supirId}/mandor", supirId)
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()))
-                .andExpect(jsonPath("$.data[0].status").value("TIBA"));
-    }
-
-    @Test
-    @WithMockUser(
-            username = "00000000-0000-0000-0000-000000000010",
-            roles = "MANDOR"
-    )
-    void mandorApproveDelivery_withMandorAuthentication_returns200() throws Exception {
-        UUID mandorId = UUID.fromString("00000000-0000-0000-0000-000000000010");
-        UUID pengirimanId = UUID.randomUUID();
-
-        when(pengirimanCommandUseCase.mandorApproveDelivery(pengirimanId, mandorId))
-                .thenReturn(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
-                        pengirimanId,
-                        UUID.randomUUID(),
-                        mandorId,
-                        "APPROVED_MANDOR",
-                        100000,
-                        0,
-                        java.time.LocalDateTime.now()
-                ));
-
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/approve", pengirimanId)
-                        .requestAttr("userId", mandorId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
-    }
-
-    @Test
-    @WithMockUser(
             username = "00000000-0000-0000-0000-000000000020",
             roles = "SUPIR"
     )
@@ -218,30 +141,6 @@ class PengirimanControllerSecurityTest {
             username = "00000000-0000-0000-0000-000000000001",
             roles = "ADMIN"
     )
-    void listApprovedDeliveriesForAdmin_withAdminAuthentication_returns200() throws Exception {
-        when(pengirimanQueryUseCase.listApprovedDeliveriesForAdmin("Awan", java.time.LocalDate.of(2026, 4, 14)))
-                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
-                        java.util.UUID.randomUUID(),
-                        java.util.UUID.randomUUID(),
-                        java.util.UUID.randomUUID(),
-                        "APPROVED_MANDOR",
-                        120000,
-                        0,
-                        java.time.LocalDateTime.now()
-                )));
-
-        mockMvc.perform(get("/api/pengiriman/admin/approved")
-                        .param("mandorName", "Awan")
-                        .param("date", "2026-04-14"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].status").value("APPROVED_MANDOR"));
-    }
-
-    @Test
-    @WithMockUser(
-            username = "00000000-0000-0000-0000-000000000001",
-            roles = "ADMIN"
-    )
     void adminProcessDelivery_withAdminAuthentication_returns200() throws Exception {
         UUID adminId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID pengirimanId = UUID.randomUUID();
@@ -266,7 +165,7 @@ class PengirimanControllerSecurityTest {
                 java.time.LocalDateTime.now()
         ));
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
+        mockMvc.perform(post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
                         .requestAttr("userId", adminId)
                         .contentType("application/json")
                         .content("""

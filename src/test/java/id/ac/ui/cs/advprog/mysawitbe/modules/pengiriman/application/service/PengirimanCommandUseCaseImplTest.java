@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanStatusTibaEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -148,5 +150,33 @@ class PengirimanCommandUseCaseImplTest {
         assertThatThrownBy(() -> service.mandorRejectDelivery(pengirimanId, mandorId, "   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Reason is required");
+    }
+
+    @Test
+    void updateDeliveryStatus_toTiba_publishesArrivalEvent() {
+        UUID pengirimanId = UUID.randomUUID();
+        PengirimanDTO current = new PengirimanDTO(
+                pengirimanId,
+                supirId,
+                null,
+                mandorId,
+                null,
+                PengirimanStatus.IN_TRANSIT.name(),
+                250000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findById(pengirimanId)).thenReturn(current);
+        when(repository.save(any(PengirimanDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PengirimanDTO result = service.updateDeliveryStatus(pengirimanId, supirId, PengirimanStatus.TIBA);
+
+        assertThat(result.status()).isEqualTo(PengirimanStatus.TIBA.name());
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(PengirimanStatusTibaEvent.class);
     }
 }

@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -177,5 +179,37 @@ class PengirimanControllerSecurityTest {
                         .requestAttr("userId", mandorId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
+    }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000020",
+            roles = "SUPIR"
+    )
+    void updateDeliveryStatus_withSupirAuthentication_returns200() throws Exception {
+        UUID supirId = UUID.fromString("00000000-0000-0000-0000-000000000020");
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(pengirimanCommandUseCase.updateDeliveryStatus(pengirimanId, supirId, PengirimanStatus.TIBA))
+                .thenReturn(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        UUID.randomUUID(),
+                        "TIBA",
+                        100000,
+                        0,
+                        java.time.LocalDateTime.now()
+                ));
+
+        mockMvc.perform(put("/api/pengiriman/{pengirimanId}/status", pengirimanId)
+                        .requestAttr("userId", supirId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "newStatus": "TIBA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("TIBA"));
     }
 }

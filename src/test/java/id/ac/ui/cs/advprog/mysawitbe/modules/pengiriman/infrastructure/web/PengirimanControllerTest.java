@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -305,5 +306,32 @@ class PengirimanControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("REJECTED_MANDOR"))
                 .andExpect(jsonPath("$.data.statusReason").value("Muatan rusak"));
+    }
+
+    @Test
+    void updateDeliveryStatus_returns200WithUpdatedStatus() throws Exception {
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(commandUseCase.updateDeliveryStatus(pengirimanId, supirId, id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus.TIBA))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        UUID.randomUUID(),
+                        "TIBA",
+                        140000,
+                        0,
+                        LocalDateTime.of(2026, 4, 13, 11, 0)
+                ));
+
+        mockMvc.perform(put("/api/pengiriman/{pengirimanId}/status", pengirimanId)
+                        .requestAttr("userId", supirId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "newStatus": "TIBA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("TIBA"));
     }
 }

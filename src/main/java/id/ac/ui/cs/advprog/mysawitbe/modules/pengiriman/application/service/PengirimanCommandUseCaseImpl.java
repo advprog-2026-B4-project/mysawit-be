@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanStatusTibaEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
@@ -97,7 +98,34 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
 
     @Override
     public PengirimanDTO updateDeliveryStatus(UUID pengirimanId, UUID supirId, PengirimanStatus newStatus) {
-        throw new UnsupportedOperationException("Milestone 50 supir status update belum diaktifkan di commit ini.");
+        if (newStatus == null) {
+            throw new IllegalArgumentException("New status is required");
+        }
+
+        PengirimanDTO current = requirePengiriman(pengirimanId);
+        ensureSupirOwnership(current, supirId);
+
+        PengirimanStatus currentStatus = parseStatus(current.status());
+        if (newStatus == PengirimanStatus.IN_TRANSIT && currentStatus != PengirimanStatus.ASSIGNED) {
+            throw new IllegalStateException("Pengiriman hanya bisa dimulai dari status ASSIGNED.");
+        }
+        if (newStatus == PengirimanStatus.TIBA && currentStatus != PengirimanStatus.IN_TRANSIT) {
+            throw new IllegalStateException("Pengiriman hanya bisa ditandai tiba dari status IN_TRANSIT.");
+        }
+        if (newStatus != PengirimanStatus.IN_TRANSIT && newStatus != PengirimanStatus.TIBA) {
+            throw new IllegalArgumentException("Supir hanya boleh mengubah status ke IN_TRANSIT atau TIBA.");
+        }
+
+        PengirimanDTO saved = saveUpdated(current, builder -> {
+            builder.acceptedWeight(current.acceptedWeight());
+            builder.status(newStatus.name());
+            builder.statusReason(null);
+        });
+
+        if (newStatus == PengirimanStatus.TIBA) {
+            eventPublisher.publishEvent(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
+        }
+        return saved;
     }
 
     @Override
@@ -165,6 +193,12 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
     private void ensureMandorOwnership(PengirimanDTO current, UUID mandorId) {
         if (mandorId == null || !mandorId.equals(current.mandorId())) {
             throw new IllegalArgumentException("Mandor tidak berhak memproses pengiriman ini.");
+        }
+    }
+
+    private void ensureSupirOwnership(PengirimanDTO current, UUID supirId) {
+        if (supirId == null || !supirId.equals(current.supirId())) {
+            throw new IllegalArgumentException("Supir tidak berhak mengubah pengiriman ini.");
         }
     }
 

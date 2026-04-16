@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.KebunDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
@@ -15,12 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -56,39 +54,16 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
             throw new KebunQueryDependencyUnavailableException(KEBUN_QUERY_UNAVAILABLE_MESSAGE);
         }
 
-        Map<UUID, AssignedSupirDTO> uniqueSupir = new LinkedHashMap<>();
-        List<KebunDTO> kebunList = kebunQueryUseCase.listKebun(null, null);
-        if (kebunList == null) {
+        List<UserDTO> supirList = kebunQueryUseCase.getSupirListByMandorId(mandorId);
+        if (supirList == null) {
             return List.of();
         }
 
-        for (KebunDTO kebun : kebunList) {
-            if (kebun == null || kebun.kebunId() == null) {
-                continue;
-            }
-
-            UUID assignedMandorId = kebunQueryUseCase.getMandorIdByKebun(kebun.kebunId());
-            if (!mandorId.equals(assignedMandorId)) {
-                continue;
-            }
-
-            List<UserDTO> supirList = kebunQueryUseCase.getSupirList(kebun.kebunId());
-            if (supirList == null) {
-                continue;
-            }
-
-            for (UserDTO user : supirList) {
-                if (!isValidSupir(user) || !matchesSearchNama(user.name(), searchNama)) {
-                    continue;
-                }
-                uniqueSupir.putIfAbsent(
-                        user.userId(),
-                        new AssignedSupirDTO(user.userId(), user.username(), user.name(), user.email())
-                );
-            }
-        }
-
-        return List.copyOf(uniqueSupir.values());
+        return supirList.stream()
+                .filter(this::isValidSupir)
+                .filter(user -> matchesSearchNama(user.name(), searchNama))
+                .map(user -> new AssignedSupirDTO(user.userId(), user.username(), user.name(), user.email()))
+                .collect(Collectors.toList());
     }
 
     @Override

@@ -232,6 +232,22 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserDTO> getSupirListByMandorId(UUID mandorId) {
+        if (mandorId == null) throw new IllegalArgumentException("mandorId wajib diisi");
+
+        UUID kebunId = kebunRepository.findKebunIdByMandorId(mandorId);
+        if (kebunId == null) {
+            return List.of();
+        }
+
+        return kebunRepository.findSupirIdsByKebunId(kebunId).stream()
+                .map(userQueryUseCase::getUserById)
+                .sorted(Comparator.comparing(UserDTO::name, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<KebunDTO> listKebun(String searchNama, String searchKode) {
         String nama = (searchNama == null) ? "" : searchNama.trim();
         String kode = (searchKode == null) ? "" : searchKode.trim();

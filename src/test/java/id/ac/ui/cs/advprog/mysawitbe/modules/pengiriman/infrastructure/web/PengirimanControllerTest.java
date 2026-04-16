@@ -390,4 +390,39 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.data[0].mandorName").value("Awan Mandor"))
                 .andExpect(jsonPath("$.data[0].status").value("APPROVED_MANDOR"));
     }
+
+    @Test
+    void adminProcessDelivery_returns200WithProcessedStatus() throws Exception {
+        UUID pengirimanId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+
+        when(commandUseCase.adminProcessDelivery(eq(pengirimanId), eq(adminId), eq(0), eq(id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus.REJECTED_ADMIN), eq("Ditolak admin")))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        UUID.randomUUID(),
+                        null,
+                        UUID.randomUUID(),
+                        null,
+                        "REJECTED_ADMIN",
+                        200000,
+                        0,
+                        "Ditolak admin",
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 14, 12, 0)
+                ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
+                        .requestAttr("userId", adminId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "acceptedWeight": 0,
+                                  "status": "REJECTED_ADMIN",
+                                  "reason": "Ditolak admin"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("REJECTED_ADMIN"))
+                .andExpect(jsonPath("$.data.statusReason").value("Ditolak admin"));
+    }
 }

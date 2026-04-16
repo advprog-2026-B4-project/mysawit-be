@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanStatusTibaEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.function.Consumer;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -170,7 +172,58 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             PengirimanStatus status,
             String reason
     ) {
-        throw new UnsupportedOperationException("Milestone 50 admin processing belum diaktifkan di commit ini.");
+        if (adminId == null) {
+            throw new IllegalArgumentException("Admin ID is required");
+        }
+        if (status == null) {
+            throw new IllegalArgumentException("Status is required");
+        }
+        if (acceptedWeight < 0) {
+            throw new IllegalArgumentException("Accepted weight cannot be negative.");
+        }
+
+        PengirimanDTO current = requirePengiriman(pengirimanId);
+        ensureStatus(
+                current,
+                PengirimanStatus.APPROVED_MANDOR,
+                "Admin hanya bisa memproses pengiriman yang sudah disetujui mandor."
+        );
+
+        String normalizedReason = normalizeOptionalReason(reason);
+        switch (status) {
+            case APPROVED_ADMIN -> {
+                if (acceptedWeight != current.totalWeight()) {
+                    throw new IllegalArgumentException("Full approve harus menerima seluruh berat pengiriman.");
+                }
+                if (normalizedReason != null) {
+                    throw new IllegalArgumentException("Full approve tidak memerlukan alasan.");
+                }
+            }
+            case REJECTED_ADMIN -> {
+                if (acceptedWeight != 0) {
+                    throw new IllegalArgumentException("Rejected delivery harus memiliki accepted weight 0.");
+                }
+                if (normalizedReason == null) {
+                    throw new IllegalArgumentException("Alasan penolakan admin wajib diisi.");
+                }
+            }
+            case PARTIAL -> throw new UnsupportedOperationException("Partial admin processing dipisah ke commit berikutnya.");
+            default -> throw new IllegalArgumentException("Status admin tidak valid.");
+        }
+
+        PengirimanDTO saved = saveUpdated(current, builder -> {
+            builder.status(status.name());
+            builder.acceptedWeight(acceptedWeight);
+            builder.statusReason(normalizedReason);
+        });
+
+        eventPublisher.publishEvent(new PengirimanProcessedByAdminEvent(
+                saved.pengirimanId(),
+                saved.mandorId(),
+                saved.acceptedWeight(),
+                toEventStatus(status)
+        ));
+        return saved;
     }
 
     private void ensureSupirBelongsToMandorKebun(UUID mandorId, UUID supirId) {
@@ -250,6 +303,14 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         }
         String trimmed = reason.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String toEventStatus(PengirimanStatus status) {
+        return switch (status) {
+            case APPROVED_ADMIN -> "APPROVED";
+            case REJECTED_ADMIN -> "REJECTED";
+            default -> status.name().toUpperCase(Locale.ROOT);
+        };
     }
 
     private static final class PengirimanBuilder {

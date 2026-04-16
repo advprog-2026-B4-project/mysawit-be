@@ -5,11 +5,13 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Assigned
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.ProcessDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.RejectDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.UpdateDeliveryStatusRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -141,6 +143,23 @@ public class PengirimanController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
         List<PengirimanDTO> result = queryUseCase.listApprovedDeliveriesForAdmin(mandorName, date);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/{pengirimanId}/process")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PengirimanDTO>> adminProcessDelivery(
+            @PathVariable UUID pengirimanId,
+            @RequestAttribute("userId") UUID adminId,
+            @Valid @RequestBody ProcessDeliveryRequestDTO request
+    ) {
+        PengirimanDTO result = commandUseCase.adminProcessDelivery(
+                pengirimanId,
+                adminId,
+                request.acceptedWeight(),
+                PengirimanStatus.valueOf(request.status().trim().toUpperCase()),
+                request.reason()
+        );
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

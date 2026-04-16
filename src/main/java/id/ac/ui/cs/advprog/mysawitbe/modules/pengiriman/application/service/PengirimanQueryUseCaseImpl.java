@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
@@ -35,6 +36,7 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
     private final PengirimanRepositoryPort repository;
     private final ObjectProvider<KebunQueryUseCase> kebunQueryUseCaseProvider;
     private final PanenQueryUseCase panenQueryUseCase;
+    private final UserQueryUseCase userQueryUseCase;
 
     @Override
     public PengirimanDTO getPengirimanById(UUID pengirimanId) {
@@ -42,13 +44,15 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
         if (result == null) {
             throw new EntityNotFoundException("Pengiriman not found: " + pengirimanId);
         }
-        return result;
+        return enrichUserNames(result);
     }
 
     @Override
     public List<PengirimanDTO> listDeliveriesBySupir(UUID supirId, LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
-        return repository.findBySupirId(supirId, startDate, endDate);
+        return repository.findBySupirId(supirId, startDate, endDate).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
@@ -105,17 +109,24 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
 
     @Override
     public List<PengirimanDTO> listActiveDeliveriesByMandor(UUID mandorId) {
-        return repository.findActiveByMandorId(mandorId);
+        return repository.findActiveByMandorId(mandorId).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
     public List<PengirimanDTO> listDeliveriesOfSupirByMandor(UUID mandorId, UUID supirId) {
-        return repository.findByMandorIdAndSupirId(mandorId, supirId);
+        return repository.findByMandorIdAndSupirId(mandorId, supirId).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
     public List<PengirimanDTO> listApprovedDeliveriesForAdmin(String mandorName, LocalDate date) {
-        return repository.findApprovedByMandorForAdmin(mandorName, date);
+        return repository.findApprovedByMandorForAdmin(mandorName, date).stream()
+                .map(this::enrichUserNames)
+                .filter(pengiriman -> matchesMandorName(pengiriman.mandorName(), mandorName))
+                .toList();
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
@@ -141,11 +152,54 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
                 .contains(searchNama.trim().toLowerCase(Locale.ROOT));
     }
 
+    private boolean matchesMandorName(String existingName, String searchNama) {
+        if (searchNama == null || searchNama.isBlank()) {
+            return true;
+        }
+        if (existingName == null || existingName.isBlank()) {
+            return false;
+        }
+        return existingName.toLowerCase(Locale.ROOT)
+                .contains(searchNama.trim().toLowerCase(Locale.ROOT));
+    }
+
     private KebunQueryUseCase requireKebunQueryUseCase() {
         KebunQueryUseCase kebunQueryUseCase = kebunQueryUseCaseProvider.getIfAvailable();
         if (kebunQueryUseCase == null) {
             throw new KebunQueryDependencyUnavailableException(KEBUN_QUERY_UNAVAILABLE_MESSAGE);
         }
         return kebunQueryUseCase;
+    }
+
+    private PengirimanDTO enrichUserNames(PengirimanDTO dto) {
+        String supirName = resolveUserName(dto.supirId(), dto.supirName());
+        String mandorName = resolveUserName(dto.mandorId(), dto.mandorName());
+        return new PengirimanDTO(
+                dto.pengirimanId(),
+                dto.supirId(),
+                supirName,
+                dto.mandorId(),
+                mandorName,
+                dto.status(),
+                dto.totalWeight(),
+                dto.acceptedWeight(),
+                dto.statusReason(),
+                dto.panenIds(),
+                dto.timestamp()
+        );
+    }
+
+    private String resolveUserName(UUID userId, String fallback) {
+        if (fallback != null && !fallback.isBlank()) {
+            return fallback;
+        }
+        if (userId == null) {
+            return null;
+        }
+        try {
+            return userQueryUseCase.getUserById(userId).name();
+        } catch (RuntimeException ex) {
+            return fallback;
+        }
     }
 }

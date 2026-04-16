@@ -362,4 +362,32 @@ class PengirimanControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("TIBA"));
     }
+
+    @Test
+    void listApprovedDeliveriesForAdmin_returnsFilteredResult() throws Exception {
+        LocalDate date = LocalDate.of(2026, 4, 14);
+        UUID mandorId = UUID.randomUUID();
+
+        when(queryUseCase.listApprovedDeliveriesForAdmin("Awan", date))
+                .thenReturn(List.of(new PengirimanDTO(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "Supir A",
+                        mandorId,
+                        "Awan Mandor",
+                        "APPROVED_MANDOR",
+                        210000,
+                        0,
+                        null,
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 14, 14, 0)
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/admin/approved")
+                        .param("mandorName", "Awan")
+                        .param("date", "2026-04-14"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].mandorName").value("Awan Mandor"))
+                .andExpect(jsonPath("$.data[0].status").value("APPROVED_MANDOR"));
+    }
 }

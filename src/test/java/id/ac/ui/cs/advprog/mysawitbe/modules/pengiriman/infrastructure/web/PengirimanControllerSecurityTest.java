@@ -212,4 +212,28 @@ class PengirimanControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("TIBA"));
     }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000001",
+            roles = "ADMIN"
+    )
+    void listApprovedDeliveriesForAdmin_withAdminAuthentication_returns200() throws Exception {
+        when(pengirimanQueryUseCase.listApprovedDeliveriesForAdmin("Awan", java.time.LocalDate.of(2026, 4, 14)))
+                .thenReturn(List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        java.util.UUID.randomUUID(),
+                        java.util.UUID.randomUUID(),
+                        java.util.UUID.randomUUID(),
+                        "APPROVED_MANDOR",
+                        120000,
+                        0,
+                        java.time.LocalDateTime.now()
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/admin/approved")
+                        .param("mandorName", "Awan")
+                        .param("date", "2026-04-14"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("APPROVED_MANDOR"));
+    }
 }

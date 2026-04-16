@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
@@ -42,6 +43,9 @@ class PengirimanQueryUseCaseImplTest {
 
     @Mock
     private PanenQueryUseCase panenQueryUseCase;
+
+    @Mock
+    private UserQueryUseCase userQueryUseCase;
 
     @InjectMocks
     private PengirimanQueryUseCaseImpl service;
@@ -193,5 +197,55 @@ class PengirimanQueryUseCaseImplTest {
         assertThat(result)
                 .extracting(AssignablePanenDTO::panenId)
                 .containsExactly(panenA);
+    }
+
+    @Test
+    void listApprovedDeliveriesForAdmin_filtersByMandorNameAfterEnrichment() {
+        UUID mandorA = UUID.randomUUID();
+        UUID mandorB = UUID.randomUUID();
+
+        PengirimanDTO deliveryA = new PengirimanDTO(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                mandorA,
+                null,
+                "APPROVED_MANDOR",
+                200000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+        PengirimanDTO deliveryB = new PengirimanDTO(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                mandorB,
+                null,
+                "APPROVED_MANDOR",
+                150000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findApprovedByMandorForAdmin("awan", null)).thenReturn(List.of(deliveryA, deliveryB));
+        when(userQueryUseCase.getUserById(deliveryA.supirId()))
+                .thenReturn(new UserDTO(deliveryA.supirId(), "supir-a", "Supir A", "SUPIR", "supir-a@example.com"));
+        when(userQueryUseCase.getUserById(deliveryB.supirId()))
+                .thenReturn(new UserDTO(deliveryB.supirId(), "supir-b", "Supir B", "SUPIR", "supir-b@example.com"));
+        when(userQueryUseCase.getUserById(mandorA))
+                .thenReturn(new UserDTO(mandorA, "awan", "Awan Mandor", "MANDOR", "awan@example.com"));
+        when(userQueryUseCase.getUserById(mandorB))
+                .thenReturn(new UserDTO(mandorB, "budi", "Budi Mandor", "MANDOR", "budi@example.com"));
+
+        List<PengirimanDTO> result = service.listApprovedDeliveriesForAdmin("awan", null);
+
+        assertThat(result)
+                .hasSize(1)
+                .first()
+                .satisfies(dto -> assertThat(dto.mandorName()).isEqualTo("Awan Mandor"));
     }
 }

@@ -134,6 +134,16 @@ public class PengirimanController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @GetMapping("/admin/approved")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PengirimanDTO>>> listApprovedDeliveriesForAdmin(
+            @RequestParam(required = false) String mandorName,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        List<PengirimanDTO> result = queryUseCase.listApprovedDeliveriesForAdmin(mandorName, date);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @ExceptionHandler(KebunQueryDependencyUnavailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleKebunQueryDependencyUnavailable(
             KebunQueryDependencyUnavailableException ex

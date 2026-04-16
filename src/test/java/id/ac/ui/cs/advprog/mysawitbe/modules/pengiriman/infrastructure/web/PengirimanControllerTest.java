@@ -97,6 +97,34 @@ class PengirimanControllerTest {
     }
 
     @Test
+    void listDeliveriesBySupir_withDateFilter_returnsRejectedReason() throws Exception {
+        LocalDate startDate = LocalDate.of(2026, 4, 10);
+        LocalDate endDate = LocalDate.of(2026, 4, 12);
+        when(queryUseCase.listDeliveriesBySupir(supirId, startDate, endDate))
+                .thenReturn(List.of(new PengirimanDTO(
+                        UUID.randomUUID(),
+                        supirId,
+                        null,
+                        UUID.randomUUID(),
+                        null,
+                        "REJECTED_MANDOR",
+                        140000,
+                        0,
+                        "Muatan rusak",
+                        List.of(UUID.randomUUID()),
+                        LocalDateTime.of(2026, 4, 12, 9, 30)
+                )));
+
+        mockMvc.perform(get("/api/pengiriman/supir")
+                        .requestAttr("userId", supirId)
+                        .param("startDate", "2026-04-10")
+                        .param("endDate", "2026-04-12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("REJECTED_MANDOR"))
+                .andExpect(jsonPath("$.data[0].statusReason").value("Muatan rusak"));
+    }
+
+    @Test
     void listAssignedSupirForMandor_returns200WithFilteredData() throws Exception {
         UUID mandorId = UUID.randomUUID();
         AssignedSupirDTO supir = new AssignedSupirDTO(

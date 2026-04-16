@@ -67,6 +67,38 @@ class PengirimanQueryUseCaseImplTest {
     }
 
     @Test
+    void listDeliveriesBySupir_withDateRangeForwardsFilterToRepository() {
+        UUID supirId = UUID.randomUUID();
+        LocalDate startDate = LocalDate.of(2026, 4, 10);
+        LocalDate endDate = LocalDate.of(2026, 4, 12);
+        PengirimanDTO dto = new PengirimanDTO(
+                UUID.randomUUID(),
+                supirId,
+                null,
+                UUID.randomUUID(),
+                null,
+                "REJECTED_MANDOR",
+                120000,
+                0,
+                "Muatan basah",
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findBySupirId(supirId, startDate, endDate)).thenReturn(List.of(dto));
+
+        List<PengirimanDTO> result = service.listDeliveriesBySupir(supirId, startDate, endDate);
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.status()).isEqualTo("REJECTED_MANDOR");
+                    assertThat(item.statusReason()).isEqualTo("Muatan basah");
+                });
+        verify(repository).findBySupirId(supirId, startDate, endDate);
+    }
+
+    @Test
     void listDeliveriesBySupir_endDateBeforeStartDate_throwsBadRequestError() {
         UUID supirId = UUID.randomUUID();
         LocalDate startDate = LocalDate.of(2026, 2, 10);

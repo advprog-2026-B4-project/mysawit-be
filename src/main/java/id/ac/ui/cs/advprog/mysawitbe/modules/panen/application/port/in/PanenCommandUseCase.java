@@ -25,5 +25,5 @@ public interface PanenCommandUseCase {
      * Mandor rejects a harvest record with a reason.
      * Publishes PanenRejectedEvent.
      */
-    PanenDTO rejectPanen(UUID panenId, UUID mandorId, String reason);
+    PanenDTO rejectPanen(UUID panenId, UUID mandorId, String rejectionReason);
 }

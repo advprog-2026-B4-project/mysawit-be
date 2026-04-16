@@ -7,11 +7,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -31,14 +33,23 @@ public class PanenQueryImpl implements PanenQueryUseCase {
         return panen;
     }
 
-    @Override
-    public List<PanenDTO> getApprovedPanenByKebun(UUID kebunId) {
-        return repositoryPort.findByKebunIdAndStatus(kebunId, "APPROVED");
-    }
+    // @Override
+    // public List<PanenDTO> getApprovedPanenByKebun(UUID kebunId) {
+    //     return repositoryPort.findByKebunIdAndStatus(kebunId, "APPROVED");
+    // }
 
     @Override
     public List<PanenDTO> listPanenByBuruh(UUID buruhId, LocalDate startDate, LocalDate endDate, String status) {
-        return repositoryPort.findByBuruhId(buruhId, startDate, endDate, status);
+        String buruhName = userQueryUseCase.getUserById(buruhId).name();
+        return repositoryPort.findByBuruhId(buruhId, startDate, endDate, status)
+                .stream()
+                .map(panen -> new PanenDTO(
+                        panen.panenId(), panen.buruhId(), buruhName,
+                        panen.kebunId(), panen.description(), panen.weight(),
+                        panen.status(), panen.rejectionReason(), panen.photos(),
+                        panen.timestamp()
+                ))
+                .toList();
     }
 
     @Override 
@@ -74,4 +85,48 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                 .toList();
     }
 
+    @Override
+    public boolean hasPanenToday(UUID buruhId, LocalDate date) {
+        if (buruhId == null) throw new IllegalArgumentException("buruhId wajib diisi");
+        if (date == null) throw new IllegalArgumentException("date wajib diisi");
+        
+        // Memanggil Port Out untuk bertanya ke database
+        return repositoryPort.existsByBuruhIdAndDate(buruhId, date);
+    }
+
+    @Override
+    public List<PanenDTO> listPanenByBuruhWithAuth(
+            UUID buruhId,
+            UUID requesterId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String status) throws IllegalAccessException {
+
+        UserDTO buruh = userQueryUseCase.getUserById(buruhId);
+        if (buruh == null) {
+            throw new EntityNotFoundException(
+                    "Buruh dengan ID " + buruhId + " tidak ditemukan.");
+        }
+        boolean isOwnData = requesterId.equals(buruhId);
+        
+        boolean isMandorSupervise = false;
+        try {
+            UserDTO requester = userQueryUseCase.getUserById(requesterId);
+            if ("MANDOR".equals(requester.role())) {
+                List<UserDTO> buruhByMandor = userQueryUseCase.getBuruhByMandorId(requesterId);
+                isMandorSupervise = buruhByMandor.stream()
+                        .anyMatch(b -> b.userId().equals(buruhId));
+            }
+        } catch (Exception e) {
+            isMandorSupervise = false;
+        }
+
+        if (!isOwnData && !isMandorSupervise) {
+            throw new IllegalAccessException(
+                    "Anda tidak memiliki akses untuk melihat data panen buruh ID " + buruhId);
+        }
+
+        // ─── Step 3: Query panen ───────────────────────────────────
+        return listPanenByBuruh(buruhId, startDate, endDate, status);
+    }
 }

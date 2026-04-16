@@ -92,7 +92,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
     @Override
     @Transactional
-    public PanenDTO rejectPanen(UUID panenId, UUID mandorId, String reason) {
+    public PanenDTO rejectPanen(UUID panenId, UUID mandorId, String rejectionReason) {
         PanenDTO dto = repositoryPort.findById(panenId);
         if (dto == null) {
             throw new EntityNotFoundException("Laporan panen tidak ditemukan");  
@@ -100,14 +100,13 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
         Panen domainPanen = mapper.dtoToDomain(dto);
         
-        domainPanen.reject(reason);
-
+        domainPanen.reject(rejectionReason);
         PanenDTO updatedDto = repositoryPort.save(mapper.toDTO(domainPanen));
 
         eventPublisher.publishEvent(new PanenRejectedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),
-                reason
+                rejectionReason
         ));
 
         return updatedDto;

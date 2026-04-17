@@ -1,11 +1,15 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,26 +41,44 @@ class PengirimanQueryUseCaseImplTest {
     @Mock
     private KebunQueryUseCase kebunQueryUseCase;
 
+    @Mock
+    private PanenQueryUseCase panenQueryUseCase;
+
+    @Mock
+    private UserQueryUseCase userQueryUseCase;
+
     @InjectMocks
     private PengirimanQueryUseCaseImpl service;
 
     @Test
     void listDeliveriesBySupir_withoutDateFilter_returnsRepositoryResult() {
         UUID supirId = UUID.randomUUID();
+        UUID mandorId = UUID.randomUUID();
         PengirimanDTO dto = new PengirimanDTO(
                 UUID.randomUUID(),
                 supirId,
-                UUID.randomUUID(),
+                mandorId,
                 "ASSIGNED",
                 120000,
                 0,
                 LocalDateTime.now()
         );
+        when(userQueryUseCase.getUserById(supirId))
+                .thenReturn(new UserDTO(supirId, "supir-a", "Supir A", "SUPIR", "supir@example.com"));
+        when(userQueryUseCase.getUserById(mandorId))
+                .thenReturn(new UserDTO(mandorId, "mandor-a", "Mandor A", "MANDOR", "mandor@example.com"));
         when(repository.findBySupirId(supirId, null, null)).thenReturn(List.of(dto));
 
         List<PengirimanDTO> result = service.listDeliveriesBySupir(supirId, null, null);
 
-        assertThat(result).containsExactly(dto);
+        assertThat(result)
+                .hasSize(1)
+                .first()
+                .satisfies(item -> {
+                    assertThat(item.pengirimanId()).isEqualTo(dto.pengirimanId());
+                    assertThat(item.supirName()).isEqualTo("Supir A");
+                    assertThat(item.mandorName()).isEqualTo("Mandor A");
+                });
         verify(repository).findBySupirId(supirId, null, null);
     }
 
@@ -133,5 +155,77 @@ class PengirimanQueryUseCaseImplTest {
 
         assertThat(result).isEmpty();
         verify(kebunQueryUseCase).getSupirListByMandorId(mandorId);
+    }
+
+    @Test
+    void listAssignablePanenForMandor_returnsOnlyApprovedPanenThatAreNotAssigned() {
+        UUID mandorId = UUID.randomUUID();
+        UUID kebunId = UUID.randomUUID();
+        UUID panenA = UUID.randomUUID();
+        UUID panenB = UUID.randomUUID();
+
+        when(kebunQueryUseCaseProvider.getIfAvailable()).thenReturn(kebunQueryUseCase);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
+        when(panenQueryUseCase.getApprovedPanenByKebun(kebunId)).thenReturn(List.of(
+                new PanenDTO(panenA, UUID.randomUUID(), "Buruh A", kebunId, "Panen A", 180000, "APPROVED", null, List.of(), LocalDateTime.now()),
+                new PanenDTO(panenB, UUID.randomUUID(), "Buruh B", kebunId, "Panen B", 120000, "APPROVED", null, List.of(), LocalDateTime.now())
+        ));
+        when(repository.findAssignedPanenIds(List.of(panenA, panenB))).thenReturn(List.of(panenB));
+
+        List<AssignablePanenDTO> result = service.listAssignablePanenForMandor(mandorId);
+
+        assertThat(result)
+                .extracting(AssignablePanenDTO::panenId)
+                .containsExactly(panenA);
+    }
+
+    @Test
+    void listApprovedDeliveriesForAdmin_filtersByMandorNameAfterEnrichment() {
+        UUID mandorA = UUID.randomUUID();
+        UUID mandorB = UUID.randomUUID();
+
+        PengirimanDTO deliveryA = new PengirimanDTO(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                mandorA,
+                null,
+                "APPROVED_MANDOR",
+                200000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+        PengirimanDTO deliveryB = new PengirimanDTO(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                mandorB,
+                null,
+                "APPROVED_MANDOR",
+                150000,
+                0,
+                null,
+                List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+
+        when(repository.findApprovedByMandorForAdmin("awan", null)).thenReturn(List.of(deliveryA, deliveryB));
+        when(userQueryUseCase.getUserById(deliveryA.supirId()))
+                .thenReturn(new UserDTO(deliveryA.supirId(), "supir-a", "Supir A", "SUPIR", "supir-a@example.com"));
+        when(userQueryUseCase.getUserById(deliveryB.supirId()))
+                .thenReturn(new UserDTO(deliveryB.supirId(), "supir-b", "Supir B", "SUPIR", "supir-b@example.com"));
+        when(userQueryUseCase.getUserById(mandorA))
+                .thenReturn(new UserDTO(mandorA, "awan", "Awan Mandor", "MANDOR", "awan@example.com"));
+        when(userQueryUseCase.getUserById(mandorB))
+                .thenReturn(new UserDTO(mandorB, "budi", "Budi Mandor", "MANDOR", "budi@example.com"));
+
+        List<PengirimanDTO> result = service.listApprovedDeliveriesForAdmin("awan", null);
+
+        assertThat(result)
+                .hasSize(1)
+                .first()
+                .satisfies(dto -> assertThat(dto.mandorName()).isEqualTo("Awan Mandor"));
     }
 }

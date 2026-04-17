@@ -61,6 +61,9 @@ dependencies {
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
+    // AWS SDK (R2 storage)
+    implementation("software.amazon.awssdk:s3:2.25.60")
+
     // DB
     runtimeOnly("org.postgresql:postgresql")
 

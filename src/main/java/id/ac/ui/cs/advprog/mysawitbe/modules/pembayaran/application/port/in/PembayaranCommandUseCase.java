@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
 
 import org.springframework.context.event.EventListener;
@@ -24,6 +25,13 @@ public interface PembayaranCommandUseCase {
      */
     @EventListener
     void onPanenApproved(PanenApprovedEvent event);
+
+    /**
+     * Triggered when a mandor approves a pengiriman; creates a pending payroll for the assigned supir.
+     * Internal event - no HTTP principal, do not add @PreAuthorize.
+     */
+    @EventListener
+    void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event);
 
     /**
      * Triggered when admin processes a pengiriman; creates pending payroll for mandor (and supir if applicable).

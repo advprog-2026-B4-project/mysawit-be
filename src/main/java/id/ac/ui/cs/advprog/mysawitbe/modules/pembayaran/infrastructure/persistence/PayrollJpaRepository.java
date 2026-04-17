@@ -8,4 +8,11 @@ import java.util.UUID;
 
 @Repository
 public interface PayrollJpaRepository extends JpaRepository<PayrollEntity, UUID>, JpaSpecificationExecutor<PayrollEntity> {
+
+    boolean existsByUserIdAndRoleAndReferenceIdAndReferenceType(
+            UUID userId,
+            String role,
+            UUID referenceId,
+            String referenceType
+    );
 }

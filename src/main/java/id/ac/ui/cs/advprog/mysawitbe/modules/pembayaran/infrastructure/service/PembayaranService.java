@@ -15,6 +15,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in.Wall
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PaymentGatewayPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PayrollRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.WalletRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private static final String STATUS_REJECTED = "REJECTED";
 
 	private static final String ROLE_BURUH = "BURUH";
+	private static final String ROLE_SUPIR = "SUPIR";
 	private static final String ROLE_MANDOR = "MANDOR";
 
 	private static final String REFERENCE_PANEN = "PANEN";
@@ -151,6 +153,22 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				event.panenId(),
 				REFERENCE_PANEN,
 				event.weight()
+		);
+	}
+
+	@Override
+	@EventListener
+	@Transactional
+	public void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event) {
+		if (event == null || event.totalWeight() <= 0) {
+			return;
+		}
+		createPendingPayroll(
+				event.supirId(),
+				ROLE_SUPIR,
+				event.pengirimanId(),
+				REFERENCE_PENGIRIMAN,
+				event.totalWeight()
 		);
 	}
 
@@ -268,7 +286,16 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		return walletRepository.findTransactionsByUserId(userId);
 	}
 
-	private PayrollDTO createPendingPayroll(UUID userId, String role, UUID referenceId, String referenceType, int weight) {
+	private void createPendingPayroll(UUID userId, String role, UUID referenceId, String referenceType, int weight) {
+		if (payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
+				userId,
+				role,
+				referenceId,
+				referenceType
+		)) {
+			return;
+		}
+
 		int wageRate = payrollRepository.getWageRate(role);
 		int netAmount = multiplySafe(weight, wageRate);
 
@@ -286,7 +313,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				null,
 				LocalDateTime.now()
 		);
-		return payrollRepository.save(pending);
+		payrollRepository.save(pending);
 	}
 
 	private PayrollDTO requirePayroll(UUID payrollId) {

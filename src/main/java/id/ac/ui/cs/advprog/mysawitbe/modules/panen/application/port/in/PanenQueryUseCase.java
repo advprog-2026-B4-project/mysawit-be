@@ -10,6 +10,8 @@ public interface PanenQueryUseCase {
 
     PanenDTO getPanenById(UUID panenId);
 
+    List<PanenDTO> getApprovedPanenByKebun(UUID kebunId);
+
     List<PanenDTO> listPanenByBuruh(UUID buruhId, LocalDate startDate, LocalDate endDate, String status);
 
     List<PanenDTO> listPanenByMandor(UUID mandorId, String buruhName, LocalDate date);

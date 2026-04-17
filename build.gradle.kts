@@ -61,17 +61,21 @@ dependencies {
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
+    // AWS SDK (R2 storage)
+    implementation("software.amazon.awssdk:s3:2.25.60")
+
     // DB
     runtimeOnly("org.postgresql:postgresql")
 
     // Test
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("com.h2database:h2")
 
 }
 

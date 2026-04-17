@@ -2,7 +2,9 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +25,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,8 +45,16 @@ class PengirimanControllerSecurityTest {
         }
 
         @Bean
-        PengirimanController pengirimanController(PengirimanQueryUseCase pengirimanQueryUseCase) {
-            return new PengirimanController(pengirimanQueryUseCase);
+        PengirimanCommandUseCase pengirimanCommandUseCase() {
+            return mock(PengirimanCommandUseCase.class);
+        }
+
+        @Bean
+        PengirimanController pengirimanController(
+                PengirimanQueryUseCase pengirimanQueryUseCase,
+                PengirimanCommandUseCase pengirimanCommandUseCase
+        ) {
+            return new PengirimanController(pengirimanQueryUseCase, pengirimanCommandUseCase);
         }
     }
 
@@ -51,6 +63,9 @@ class PengirimanControllerSecurityTest {
 
     @org.springframework.beans.factory.annotation.Autowired
     private PengirimanQueryUseCase pengirimanQueryUseCase;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private PengirimanCommandUseCase pengirimanCommandUseCase;
 
     private MockMvc mockMvc;
 
@@ -87,5 +102,80 @@ class PengirimanControllerSecurityTest {
                 .andExpect(jsonPath("$.data[0].name").value("Ega Jawa"));
 
         verify(pengirimanQueryUseCase).listAssignedSupirForMandor(mandorId, "ega");
+    }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000020",
+            roles = "SUPIR"
+    )
+    void updateDeliveryStatus_withSupirAuthentication_returns200() throws Exception {
+        UUID supirId = UUID.fromString("00000000-0000-0000-0000-000000000020");
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(pengirimanCommandUseCase.updateDeliveryStatus(pengirimanId, supirId, PengirimanStatus.TIBA))
+                .thenReturn(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        UUID.randomUUID(),
+                        "TIBA",
+                        100000,
+                        0,
+                        java.time.LocalDateTime.now()
+                ));
+
+        mockMvc.perform(put("/api/pengiriman/{pengirimanId}/status", pengirimanId)
+                        .requestAttr("userId", supirId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "newStatus": "TIBA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("TIBA"));
+    }
+
+    @Test
+    @WithMockUser(
+            username = "00000000-0000-0000-0000-000000000001",
+            roles = "ADMIN"
+    )
+    void adminProcessDelivery_withAdminAuthentication_returns200() throws Exception {
+        UUID adminId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID pengirimanId = UUID.randomUUID();
+
+        when(pengirimanCommandUseCase.adminProcessDelivery(
+                pengirimanId,
+                adminId,
+                0,
+                PengirimanStatus.REJECTED_ADMIN,
+                "Ditolak admin"
+        )).thenReturn(new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO(
+                pengirimanId,
+                UUID.randomUUID(),
+                null,
+                UUID.randomUUID(),
+                null,
+                "REJECTED_ADMIN",
+                100000,
+                0,
+                "Ditolak admin",
+                java.util.List.of(java.util.UUID.randomUUID()),
+                java.time.LocalDateTime.now()
+        ));
+
+        mockMvc.perform(post("/api/pengiriman/{pengirimanId}/process", pengirimanId)
+                        .requestAttr("userId", adminId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "acceptedWeight": 0,
+                                  "status": "REJECTED_ADMIN",
+                                  "reason": "Ditolak admin"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("REJECTED_ADMIN"));
     }
 }

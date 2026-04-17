@@ -41,6 +41,14 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
     }
 
     @Override
+    public List<UUID> findAssignedPanenIds(List<UUID> panenIds) {
+        if (panenIds == null || panenIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findAssignedPanenIds(panenIds);
+    }
+
+    @Override
     public List<PengirimanDTO> findBySupirId(UUID supirId, LocalDate startDate, LocalDate endDate) {
         List<PengirimanJpaEntity> entities;
 
@@ -83,10 +91,10 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
     public List<PengirimanDTO> findApprovedByMandorForAdmin(String mandorName, LocalDate date) {
         List<PengirimanJpaEntity> entities;
         if (date == null) {
-            entities = jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED.name());
+            entities = jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED_MANDOR.name());
         } else {
             entities = jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
-                    PengirimanStatus.APPROVED.name(),
+                    PengirimanStatus.APPROVED_MANDOR.name(),
                     date.atStartOfDay(),
                     toEndOfDay(date)
             );

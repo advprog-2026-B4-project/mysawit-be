@@ -70,6 +70,21 @@ public class PayrollRepositoryAdapter implements PayrollRepositoryPort {
 	}
 
 	@Override
+	public boolean existsByUserIdAndRoleAndReferenceIdAndReferenceType(
+			UUID userId,
+			String role,
+			UUID referenceId,
+			String referenceType
+	) {
+		return payrollJpaRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
+				userId,
+				role,
+				referenceId,
+				referenceType
+		);
+	}
+
+	@Override
 	public int getWageRate(String role) {
 		VariableKey key = toVariableKey(role);
 		return variabelPokokJpaRepository.findById(key)

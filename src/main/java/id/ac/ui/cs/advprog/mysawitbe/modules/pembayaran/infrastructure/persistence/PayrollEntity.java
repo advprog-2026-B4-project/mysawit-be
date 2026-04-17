@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +18,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "payrolls")
+@Table(
+		name = "payrolls",
+		uniqueConstraints = @UniqueConstraint(
+				name = "uk_payrolls_user_role_reference",
+				columnNames = {"user_id", "role", "reference_id", "reference_type"}
+		)
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -1,12 +1,12 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 
 public record ProcessDeliveryRequestDTO(
     @NotNull(message = "Accepted weight is required")
-    @Positive(message = "Accepted weight must be positive")
+    @Min(value = 0, message = "Accepted weight cannot be negative")
     Integer acceptedWeight,
 
     @NotBlank(message = "Status is required")

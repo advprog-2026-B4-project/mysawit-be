@@ -23,6 +23,13 @@ public interface PayrollRepositoryPort {
 
     PayrollPageDTO findAll(LocalDate startDate, LocalDate endDate, String status, int page, int size);
 
+    boolean existsByUserIdAndRoleAndReferenceIdAndReferenceType(
+            UUID userId,
+            String role,
+            UUID referenceId,
+            String referenceType
+    );
+
     /**
      * Returns the currently configured wage rate for a given role.
      * role: BURUH, SUPIR, or MANDOR.

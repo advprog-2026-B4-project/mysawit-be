@@ -33,10 +33,10 @@ public class PanenQueryImpl implements PanenQueryUseCase {
         return panen;
     }
 
-    // @Override
-    // public List<PanenDTO> getApprovedPanenByKebun(UUID kebunId) {
-    //     return repositoryPort.findByKebunIdAndStatus(kebunId, "APPROVED");
-    // }
+    @Override
+    public List<PanenDTO> getApprovedPanenByKebun(UUID kebunId) {
+        return repositoryPort.findByKebunIdAndStatus(kebunId, "APPROVED");
+    }
 
     @Override
     public List<PanenDTO> listPanenByBuruh(UUID buruhId, LocalDate startDate, LocalDate endDate, String status) {

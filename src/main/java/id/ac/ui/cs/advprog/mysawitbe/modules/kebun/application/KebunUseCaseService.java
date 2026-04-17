@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.service;
+package id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;

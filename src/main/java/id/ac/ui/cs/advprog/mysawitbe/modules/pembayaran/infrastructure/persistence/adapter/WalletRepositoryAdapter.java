@@ -83,6 +83,28 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 		);
 	}
 
+	@Override
+	public WalletBalanceDTO creditTopUp(UUID userId, int amount, String reference) {
+		if (amount <= 0) {
+			throw new IllegalArgumentException("Credit amount must be positive");
+		}
+
+		WalletEntity wallet = findOrCreateWallet(userId);
+		wallet.setBalance(wallet.getBalance() + amount);
+		WalletEntity savedWallet = walletJpaRepository.save(wallet);
+
+		WalletTransactionEntity transaction = WalletTransactionEntity.builder()
+				.userId(userId)
+				.payrollId(null)
+				.amount(amount)
+				.type(CREDIT_TYPE)
+				.reference(reference)
+				.build();
+		walletTransactionJpaRepository.save(transaction);
+
+		return walletMapper.toBalanceDto(savedWallet);
+	}
+
 	private WalletEntity findOrCreateWallet(UUID userId) {
 		return walletJpaRepository.findById(userId)
 				.orElseGet(() -> walletJpaRepository.save(

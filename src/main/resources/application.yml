@@ -3,6 +3,13 @@ api:
     path: /api/kebun
 
 app:
+  midtrans:
+    server-key: ${MIDTRANS_SERVER_KEY:}
+    client-key: ${MIDTRANS_CLIENT_KEY:}
+    merchant-id: ${MIDTRANS_MERCHANT_ID:}
+    snap-base-url: ${MIDTRANS_SNAP_BASE_URL:https://app.sandbox.midtrans.com/snap/v2/v1}
+    notification-url: ${MIDTRANS_NOTIFICATION_URL:http://localhost:8080/api/pembayaran/wallet/midtrans-callback}
+    redirect-url: ${APP_FRONTEND_URL:http://localhost:3000}/admin/pembayaran/topup
   name: MySawit
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}

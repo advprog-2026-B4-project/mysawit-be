@@ -1,8 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollStatusDTO;
@@ -58,6 +60,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final WalletRepositoryPort walletRepository;
 	private final PanenQueryUseCase panenQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
+	private final MidtransProperties midtransProperties;
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Override
@@ -265,6 +268,36 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		if (!paymentGateway.verifyCallbackSignature(payload)) {
 			throw new IllegalArgumentException("Invalid payment callback signature");
 		}
+
+		String status = payload.transactionStatus() == null ? "" : payload.transactionStatus().trim().toLowerCase(Locale.ROOT);
+		if ("settlement".equals(status) || "capture".equals(status)) {
+			String orderId = payload.orderId();
+			if (orderId != null && orderId.startsWith("TOPUP:")) {
+				String[] parts = orderId.split(":", 3);
+				if (parts.length == 3) {
+					UUID adminId = UUID.fromString(parts[1]);
+					walletRepository.creditTopUp(adminId, payload.grossAmount(), payload.orderId());
+				}
+			}
+		}
+	}
+
+	@Override
+	@Transactional
+	public TopUpResponseDTO initiateTopUp(UUID adminId, int amount) {
+		requireAdminId(adminId);
+		if (amount <= 0) {
+			throw new IllegalArgumentException("Amount must be positive");
+		}
+
+		String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID();
+		PaymentGatewayPort paymentGateway = paymentGatewayProvider.getIfAvailable();
+		if (paymentGateway == null) {
+			throw new IllegalStateException("Payment gateway integration is not configured");
+		}
+
+		String redirectUrl = paymentGateway.initiateTopUp(orderId, amount);
+		return new TopUpResponseDTO(redirectUrl);
 	}
 
 	@Override

@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PaymentGatewayPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PayrollRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.WalletRepositoryPort;
@@ -20,7 +23,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -43,6 +50,12 @@ class PembayaranServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private MidtransProperties midtransProperties;
+
+    @Mock
+    private PaymentGatewayPort paymentGateway;
 
     @InjectMocks
     private PembayaranService service;
@@ -153,5 +166,210 @@ class PembayaranServiceTest {
         assertThat(saved.referenceId()).isEqualTo(pengirimanId);
         assertThat(saved.referenceType()).isEqualTo("PENGIRIMAN");
         assertThat(saved.weight()).isEqualTo(210000);
+    }
+
+    // --- Top-up tests ---
+
+    @Test
+    void initiateTopUp_callsPaymentGateway_andReturnsPaymentUrl() {
+        UUID adminId = UUID.randomUUID();
+        int amount = 50000;
+        String expectedRedirect = "https://app.midtrans.com/snap/v2/v1/transactions?token=fake-token";
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.initiateTopUp(anyString(), eq(amount))).thenReturn(expectedRedirect);
+
+        TopUpResponseDTO result = service.initiateTopUp(adminId, amount);
+
+        assertThat(result.paymentUrl()).isEqualTo(expectedRedirect);
+        ArgumentCaptor<String> orderIdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(paymentGateway).initiateTopUp(orderIdCaptor.capture(), eq(amount));
+        assertThat(orderIdCaptor.getValue()).startsWith("TOPUP:" + adminId);
+    }
+
+    @Test
+    void initiateTopUp_throwsWhenAmountIsNotPositive() {
+        UUID adminId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.initiateTopUp(adminId, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Amount must be positive");
+
+        assertThatThrownBy(() -> service.initiateTopUp(adminId, -50000))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Amount must be positive");
+    }
+
+    @Test
+    void initiateTopUp_throwsWhenAdminIdIsNull() {
+        assertThatThrownBy(() -> service.initiateTopUp(null, 50000))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Admin id is required");
+    }
+
+    @Test
+    void initiateTopUp_throwsWhenPaymentGatewayNotConfigured() {
+        UUID adminId = UUID.randomUUID();
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(null);
+
+        assertThatThrownBy(() -> service.initiateTopUp(adminId, 50000))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Payment gateway integration is not configured");
+    }
+
+    @Test
+    void handlePaymentCallback_creditsWalletOnSettlement() {
+        UUID adminId = UUID.randomUUID();
+        String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID();
+        int grossAmount = 100000;
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-123",
+                orderId,
+                grossAmount,
+                "settlement",
+                "credit_card",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(true);
+
+        service.handlePaymentCallback(callback);
+
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount), eq(orderId));
+    }
+
+    @Test
+    void handlePaymentCallback_creditsWalletOnCapture() {
+        UUID adminId = UUID.randomUUID();
+        String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID();
+        int grossAmount = 75000;
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-456",
+                orderId,
+                grossAmount,
+                "capture",
+                "gopay",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(true);
+
+        service.handlePaymentCallback(callback);
+
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount), eq(orderId));
+    }
+
+    @Test
+    void handlePaymentCallback_doesNotCreditOnDeny() {
+        UUID adminId = UUID.randomUUID();
+        String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID();
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-deny",
+                orderId,
+                50000,
+                "deny",
+                "credit_card",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(true);
+
+        service.handlePaymentCallback(callback);
+
+        verify(walletRepository, never()).creditTopUp(any(), anyInt(), any());
+    }
+
+    @Test
+    void handlePaymentCallback_doesNotCreditOnExpire() {
+        String orderId = "TOPUP:" + UUID.randomUUID() + ":" + UUID.randomUUID();
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-expire",
+                orderId,
+                50000,
+                "expire",
+                "bank_transfer",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(true);
+
+        service.handlePaymentCallback(callback);
+
+        verify(walletRepository, never()).creditTopUp(any(), anyInt(), any());
+    }
+
+    @Test
+    void handlePaymentCallback_throwsOnInvalidSignature() {
+        String orderId = "TOPUP:" + UUID.randomUUID() + ":" + UUID.randomUUID();
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-invalid",
+                orderId,
+                50000,
+                "settlement",
+                "credit_card",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.handlePaymentCallback(callback))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid payment callback signature");
+
+        verify(walletRepository, never()).creditTopUp(any(), anyInt(), any());
+    }
+
+    @Test
+    void handlePaymentCallback_throwsWhenPaymentGatewayNotConfigured() {
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-123",
+                "TOPUP:" + UUID.randomUUID() + ":" + UUID.randomUUID(),
+                50000,
+                "settlement",
+                "credit_card",
+                "sig"
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(null);
+
+        assertThatThrownBy(() -> service.handlePaymentCallback(callback))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Payment gateway integration is not configured");
+    }
+
+    @Test
+    void handlePaymentCallback_ignoresNonTopupOrderId() {
+        String signature = "fake-signature";
+
+        PaymentCallbackDTO callback = new PaymentCallbackDTO(
+                "tx-other",
+                "SOME-OTHER-ORDER-ID",
+                50000,
+                "settlement",
+                "credit_card",
+                signature
+        );
+
+        when(paymentGatewayProvider.getIfAvailable()).thenReturn(paymentGateway);
+        when(paymentGateway.verifyCallbackSignature(callback)).thenReturn(true);
+
+        service.handlePaymentCallback(callback);
+
+        verify(walletRepository, never()).creditTopUp(any(), anyInt(), any());
     }
 }

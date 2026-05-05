@@ -36,6 +36,9 @@ public class WalletTransactionEntity {
 	@Column(name = "payroll_id")
 	private UUID payrollId;
 
+	@Column(name = "reference", length = 64)
+	private String reference;
+
 	@Column(name = "amount", nullable = false)
 	private int amount;
 

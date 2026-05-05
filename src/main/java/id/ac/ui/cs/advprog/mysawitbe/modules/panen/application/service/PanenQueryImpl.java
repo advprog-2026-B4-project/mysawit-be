@@ -90,6 +90,16 @@ public class PanenQueryImpl implements PanenQueryUseCase {
         if (buruhId == null) throw new IllegalArgumentException("buruhId wajib diisi");
         if (date == null) throw new IllegalArgumentException("date wajib diisi");
         
+        UUID mandorId = userQueryUseCase.getMandorIdByBuruhId(buruhId);
+        if (mandorId == null) {
+            throw new IllegalStateException("Buruh belum memiliki Mandor!");
+        }
+
+        UUID kebunId = kebunQueryUseCase.findKebunIdByMandorId(mandorId);
+        if (kebunId == null) {
+            throw new IllegalStateException("Mandor belum di-assign ke kebun manapun!");
+        }
+
         // Memanggil Port Out untuk bertanya ke database
         return repositoryPort.existsByBuruhIdAndDate(buruhId, date);
     }

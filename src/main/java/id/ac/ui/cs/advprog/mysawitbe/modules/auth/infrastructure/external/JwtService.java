@@ -18,6 +18,9 @@ public class JwtService {
     private static final long OAUTH_REGISTRATION_EXPIRATION_MS = 10 * 60 * 1000;
     private static final String OAUTH_REGISTRATION_TYPE = "oauth-registration";
 
+    private static final long UPLOAD_EXPIRATION_MS = 5 * 60 * 1000;
+    private static final String UPLOAD_TYPE = "upload-token";
+
     private final SecretKey key;
     private final long      expirationMs;
 
@@ -80,6 +83,27 @@ public class JwtService {
         try {
             Claims claims = parseClaims(token);
             return claims.getExpiration().after(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public String generateUploadToken(String userId) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(userId)
+                .claim("type", UPLOAD_TYPE)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + UPLOAD_EXPIRATION_MS))
+                .signWith(key)
+                .compact();
+    }
+
+    public boolean isValidUploadToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            String type = claims.get("type", String.class);
+            return UPLOAD_TYPE.equals(type) && claims.getExpiration().after(new Date());
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }

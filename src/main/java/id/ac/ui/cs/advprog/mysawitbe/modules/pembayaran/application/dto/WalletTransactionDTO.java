@@ -14,5 +14,6 @@ public record WalletTransactionDTO(
         UUID payrollId,
         int amount,
         String type,
+        String reference,
         LocalDateTime createdAt
 ) {}

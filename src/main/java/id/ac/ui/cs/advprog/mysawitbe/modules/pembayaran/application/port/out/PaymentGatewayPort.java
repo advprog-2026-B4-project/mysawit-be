@@ -20,4 +20,9 @@ public interface PaymentGatewayPort {
      * Returns true if the signature is valid.
      */
     boolean verifyCallbackSignature(PaymentCallbackDTO payload);
+
+    /**
+     * Verifies the transaction status by checking directly with the Midtrans API.
+     */
+    PaymentCallbackDTO fetchTransactionStatus(String orderId);
 }

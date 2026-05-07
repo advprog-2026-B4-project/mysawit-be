@@ -269,14 +269,25 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 			throw new IllegalArgumentException("Invalid payment callback signature");
 		}
 
-		String status = payload.transactionStatus() == null ? "" : payload.transactionStatus().trim().toLowerCase(Locale.ROOT);
+		// Double verification: Fetch directly from Midtrans API to prevent spoofing
+		PaymentCallbackDTO verifiedPayload = paymentGateway.fetchTransactionStatus(payload.orderId());
+		if (verifiedPayload == null) {
+			throw new IllegalStateException("Failed to fetch transaction status from Midtrans");
+		}
+
+		String status = verifiedPayload.transactionStatus() == null ? "" : verifiedPayload.transactionStatus().trim().toLowerCase(Locale.ROOT);
 		if ("settlement".equals(status) || "capture".equals(status)) {
-			String orderId = payload.orderId();
+			String orderId = verifiedPayload.orderId();
 			if (orderId != null && orderId.startsWith("TOPUP:")) {
 				String[] parts = orderId.split(":", 3);
 				if (parts.length == 3) {
 					UUID adminId = UUID.fromString(parts[1]);
-					walletRepository.creditTopUp(adminId, payload.grossAmount(), payload.orderId());
+					int amountRupiah = (int) Double.parseDouble(verifiedPayload.grossAmount());
+					int internalDollars = amountRupiah / 10000;
+					
+					// Avoid double crediting by checking if this reference already exists
+					// We can wrap this creditTopUp to be idempotent or just call it directly if the walletRepository handles it
+					walletRepository.creditTopUp(adminId, internalDollars, verifiedPayload.orderId());
 				}
 			}
 		}
@@ -289,8 +300,11 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		if (amount <= 0) {
 			throw new IllegalArgumentException("Amount must be positive");
 		}
+		if (amount % 10000 != 0) {
+			throw new IllegalArgumentException("Amount must be a multiple of 10000 (Rp10.000 = $1)");
+		}
 
-		String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID();
+		String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID().toString().substring(0, 5);
 		PaymentGatewayPort paymentGateway = paymentGatewayProvider.getIfAvailable();
 		if (paymentGateway == null) {
 			throw new IllegalStateException("Payment gateway integration is not configured");

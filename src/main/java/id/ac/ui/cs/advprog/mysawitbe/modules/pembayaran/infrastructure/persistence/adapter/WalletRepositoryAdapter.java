@@ -89,6 +89,11 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 			throw new IllegalArgumentException("Credit amount must be positive");
 		}
 
+		if (reference != null && walletTransactionJpaRepository.existsByReference(reference)) {
+			// Idempotency check: Topup already processed for this reference
+			return walletMapper.toBalanceDto(findOrCreateWallet(userId));
+		}
+
 		WalletEntity wallet = findOrCreateWallet(userId);
 		wallet.setBalance(wallet.getBalance() + amount);
 		WalletEntity savedWallet = walletJpaRepository.save(wallet);

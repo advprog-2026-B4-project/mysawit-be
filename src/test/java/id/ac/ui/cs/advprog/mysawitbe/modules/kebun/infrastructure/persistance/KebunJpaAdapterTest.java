@@ -145,6 +145,16 @@ class KebunJpaAdapterTest {
     }
 
     @Test
+    void findByNamaContainingOrKodeContaining_withNullNamaAndKode_usesKodeSearch() {
+        when(kebunRepo.findByKodeContainingIgnoreCase("kode"))
+                .thenReturn(List.of(new KebunJpaEntity()));
+
+        adapter.findByNamaContainingOrKodeContaining(null, "kode");
+
+        verify(kebunRepo).findByKodeContainingIgnoreCase("kode");
+    }
+
+    @Test
     void findByNamaContainingOrKodeContaining_withoutFilters_returnsAll() {
         when(kebunRepo.findAll()).thenReturn(List.of(new KebunJpaEntity()));
 
@@ -255,43 +265,6 @@ class KebunJpaAdapterTest {
 
     @Test
     void moveSupir_updatesId_savesEntity() {
-        UUID supirId = UUID.randomUUID();
-        UUID newKebunId = UUID.randomUUID();
-        KebunSupirJpaEntity row = new KebunSupirJpaEntity(UUID.randomUUID(), supirId);
-        when(supirRepo.findBySupirId(supirId)).thenReturn(Optional.of(row));
-
-        adapter.moveSupir(supirId, newKebunId);
-        assertThat(row.getKebunId()).isEqualTo(newKebunId);
-        verify(supirRepo).save(row);
-    }
-
-    @Test
-    void moveSupir_updatesKebunId_savesEntity() {
-        // Mencakup: row.setKebunId(newKebunId); dan kebunSupirJpaRepository.save(row);
-        UUID supirId = UUID.randomUUID();
-        UUID newKebunId = UUID.randomUUID();
-        KebunSupirJpaEntity row = new KebunSupirJpaEntity(UUID.randomUUID(), supirId);
-
-        when(supirRepo.findBySupirId(supirId)).thenReturn(Optional.of(row));
-
-        adapter.moveSupir(supirId, newKebunId);
-
-        assertThat(row.getKebunId()).isEqualTo(newKebunId);
-        verify(supirRepo).save(row);
-    }
-
-    @Test
-    void assignSupir_new_savesEntity() {
-        // Mencakup: kebunSupirJpaRepository.save(new KebunSupirJpaEntity(kebunId, supirId));
-        UUID supirId = UUID.randomUUID();
-        when(supirRepo.findBySupirId(supirId)).thenReturn(Optional.empty());
-        adapter.assignSupir(supirId, UUID.randomUUID());
-        verify(supirRepo).save(any());
-    }
-
-    @Test
-    void moveSupir_updates_savesEntity() {
-        // Mencakup: row.setKebunId(newKebunId);
         UUID supirId = UUID.randomUUID();
         UUID newKebunId = UUID.randomUUID();
         KebunSupirJpaEntity row = new KebunSupirJpaEntity(UUID.randomUUID(), supirId);

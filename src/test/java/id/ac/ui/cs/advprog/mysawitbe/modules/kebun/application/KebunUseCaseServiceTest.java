@@ -407,6 +407,19 @@ class KebunUseCaseServiceTest {
     }
 
     @Test
+    void moveMandorToKebun_wrongRole_throwsIllegalArgumentException() {
+        UUID mandorId = UUID.randomUUID();
+        UserDTO notMandor = new UserDTO(mandorId, "user1", "Budi", "SUPIR", "budi@mail.com");
+
+        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "A", "K", 10, coordinates));
+        when(userQueryUseCase.getUserById(mandorId)).thenReturn(notMandor);
+
+        assertThatThrownBy(() -> service.moveMandorToKebun(mandorId, kebunId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("User is not a MANDOR");
+    }
+
+    @Test
     void assignSupirToKebun_wrongRole_throwsIllegalArgumentException() {
         UUID supirId = UUID.randomUUID();
         UserDTO notSupir = new UserDTO(supirId, "s", "n", "MANDOR", "e");
@@ -456,6 +469,14 @@ class KebunUseCaseServiceTest {
     }
 
     @Test
+    void getKebunById_validId_returnsDto() {
+        KebunDTO dto = new KebunDTO(kebunId, "A", "K", 10, coordinates);
+        when(kebunRepository.findById(kebunId)).thenReturn(dto);
+
+        assertThat(service.getKebunById(kebunId)).isEqualTo(dto);
+    }
+
+    @Test
     void validateCoordinates_pointOutside_returnsTrue() {
         when(kebunRepository.findAllCoordinates()).thenReturn(List.of(coordinates));
         // coordinates (0,0) to (10,10), point (15,15) is outside
@@ -497,45 +518,6 @@ class KebunUseCaseServiceTest {
         assertThatThrownBy(() -> service.deleteKebun(kebunId))
                 .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
                 .hasMessageContaining("Kebun not found");
-    }
-
-    @Test
-    void getBuruhList_validId_returnsSortedList() {
-        UUID mandorId = UUID.randomUUID();
-        UserDTO b1 = new UserDTO(UUID.randomUUID(), "b1", "Zaka", "BURUH", "z@e.com");
-        UserDTO b2 = new UserDTO(UUID.randomUUID(), "b2", "Abdi", "BURUH", "a@e.com");
-
-        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "A", "K", 10, coordinates));
-        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(mandorId);
-        when(userQueryUseCase.getBuruhByMandorId(mandorId)).thenReturn(List.of(b1, b2));
-
-        List<UserDTO> result = service.getBuruhList(kebunId);
-
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("Abdi"); // Terurut A-Z
-        assertThat(result.get(1).name()).isEqualTo("Zaka");
-    }
-
-    @Test
-    void listKebun_filterNamaAndKode_usesRepositorySearch() {
-        service.listKebun("Kebun", "KB");
-        verify(kebunRepository).findByNamaContainingOrKodeContaining("Kebun", "KB");
-    }
-
-    @Test
-    void getKebunById_validId_returnsDto() {
-        KebunDTO dto = new KebunDTO(kebunId, "A", "K", 10, coordinates);
-        when(kebunRepository.findById(kebunId)).thenReturn(dto);
-
-        KebunDTO result = service.getKebunById(kebunId);
-        assertThat(result).isEqualTo(dto);
-    }
-
-    @Test
-    void getKebunById_notFound_throwsEntityNotFoundException() {
-        when(kebunRepository.findById(kebunId)).thenReturn(null);
-        assertThatThrownBy(() -> service.getKebunById(kebunId))
-                .isInstanceOf(EntityNotFoundException.class);
     }
 
     @Test
@@ -758,29 +740,10 @@ class KebunUseCaseServiceTest {
     }
 
     @Test
-    void getBuruhList_repositoryReturnsNullList_returnsEmptyList() {
-        // Mencakup baris 185-187 (buruhList == null)
-        UUID mandorId = UUID.randomUUID();
-        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "A", "K", 10, coordinates));
-        when(kebunRepository.findMandorIdByKebunId(kebunId)).thenReturn(mandorId);
-        when(userQueryUseCase.getBuruhByMandorId(mandorId)).thenReturn(null);
-
-        List<UserDTO> result = service.getBuruhList(kebunId);
-        assertThat(result).isEmpty();
-    }
-
-    @Test
     void listKebun_oneFilterNullOneFilterEmpty_usesFindAll() {
         // Menguji kombinasi ternary null dan isBlank()
         service.listKebun(null, "   ");
         verify(kebunRepository).findAll();
-    }
-
-    @Test
-    void listKebun_oneFilterValidOneFilterNull_usesSearch() {
-        // Menguji percabangan ternary null di salah satu sisi
-        service.listKebun("Kebun A", null);
-        verify(kebunRepository).findByNamaContainingOrKodeContaining("Kebun A", "");
     }
 
     @Test
@@ -814,34 +777,6 @@ class KebunUseCaseServiceTest {
         assertThatThrownBy(() -> service.deleteKebun(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("kebunId wajib diisi");
-    }
-
-    @Test
-    void assignMandorToKebun_notMandorRole_throwsIllegalArgumentException() {
-        // Mencakup: if (!"MANDOR".equals(user.role()))
-        UUID mandorId = UUID.randomUUID();
-        UserDTO notMandor = new UserDTO(mandorId, "user1", "Budi", "SUPIR", "budi@mail.com");
-
-        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "A", "K", 10, coordinates));
-        when(userQueryUseCase.getUserById(mandorId)).thenReturn(notMandor);
-
-        assertThatThrownBy(() -> service.assignMandorToKebun(mandorId, kebunId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("User is not a MANDOR");
-    }
-
-    @Test
-    void moveMandorToKebun_notMandorRole_throwsIllegalArgumentException() {
-        // Mencakup: if (!"MANDOR".equals(user.role())) pada moveMandor
-        UUID mandorId = UUID.randomUUID();
-        UserDTO notMandor = new UserDTO(mandorId, "user1", "Budi", "SUPIR", "budi@mail.com");
-
-        when(kebunRepository.findById(kebunId)).thenReturn(new KebunDTO(kebunId, "A", "K", 10, coordinates));
-        when(userQueryUseCase.getUserById(mandorId)).thenReturn(notMandor);
-
-        assertThatThrownBy(() -> service.moveMandorToKebun(mandorId, kebunId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("User is not a MANDOR");
     }
 
     @Test
@@ -893,24 +828,6 @@ class KebunUseCaseServiceTest {
         when(kebunRepository.hasMandorAssigned(kebunId)).thenReturn(false);
         service.deleteKebun(kebunId);
         verify(kebunRepository).deleteById(kebunId);
-    }
-
-    @Test
-    void validateNoOverlap_sameId_skipsPengecekan() {
-        // Menguji: if (selfKebunId != null && selfKebunId.equals(existing.kebunId())) continue;
-        // Kita buat list 'findAll' berisi kebun yang sama dengan yang sedang di-edit
-        KebunDTO existing = new KebunDTO(kebunId, "Kebun Sama", "K-SAMA", 10, coordinates);
-
-        when(kebunRepository.findById(kebunId)).thenReturn(existing);
-        when(kebunRepository.findAll()).thenReturn(List.of(existing));
-        when(kebunRepository.save(any())).thenReturn(existing);
-
-        // Edit dengan koordinat yang sama (pasti overlap jika tidak di-skip)
-        // Jika branch 'continue' bekerja, tidak akan ada IllegalStateException
-        KebunDTO result = service.editKebun(kebunId, "Nama Baru", 10, coordinates);
-
-        assertThat(result).isNotNull();
-        verify(kebunRepository).save(any());
     }
 
     @Test

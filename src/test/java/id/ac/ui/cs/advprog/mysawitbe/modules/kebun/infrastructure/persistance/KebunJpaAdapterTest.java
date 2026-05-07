@@ -88,7 +88,8 @@ class KebunJpaAdapterTest {
 
         assertThat(oldKebun.getMandorId()).isNull();
         assertThat(newKebun.getMandorId()).isEqualTo(mandorId);
-        verify(kebunRepo, times(2)).save(any());
+        verify(kebunRepo).saveAndFlush(oldKebun);
+        verify(kebunRepo).save(newKebun);
     }
 
     @Test
@@ -114,11 +115,42 @@ class KebunJpaAdapterTest {
     }
 
     @Test
-    void findByNamaContainingOrKodeContaining_callsRepo() {
-        when(kebunRepo.findByNamaContainingIgnoreCaseOrKodeContainingIgnoreCase(anyString(), anyString()))
+    void findByNamaContainingOrKodeContaining_withBothFilters_usesAndSearch() {
+        when(kebunRepo.findByNamaContainingIgnoreCaseAndKodeContainingIgnoreCase(anyString(), anyString()))
                 .thenReturn(List.of(new KebunJpaEntity()));
         adapter.findByNamaContainingOrKodeContaining("nama", "kode");
-        verify(kebunRepo).findByNamaContainingIgnoreCaseOrKodeContainingIgnoreCase("nama", "kode");
+        verify(kebunRepo).findByNamaContainingIgnoreCaseAndKodeContainingIgnoreCase("nama", "kode");
+    }
+
+    @Test
+    void findByNamaContainingOrKodeContaining_withOnlyNama_usesNamaSearch() {
+        when(kebunRepo.findByNamaContainingIgnoreCase("nama"))
+                .thenReturn(List.of(new KebunJpaEntity()));
+
+        adapter.findByNamaContainingOrKodeContaining("nama", "");
+
+        verify(kebunRepo).findByNamaContainingIgnoreCase("nama");
+        verify(kebunRepo, never()).findByKodeContainingIgnoreCase("");
+    }
+
+    @Test
+    void findByNamaContainingOrKodeContaining_withOnlyKode_usesKodeSearch() {
+        when(kebunRepo.findByKodeContainingIgnoreCase("kode"))
+                .thenReturn(List.of(new KebunJpaEntity()));
+
+        adapter.findByNamaContainingOrKodeContaining("", "kode");
+
+        verify(kebunRepo).findByKodeContainingIgnoreCase("kode");
+        verify(kebunRepo, never()).findByNamaContainingIgnoreCase("");
+    }
+
+    @Test
+    void findByNamaContainingOrKodeContaining_withoutFilters_returnsAll() {
+        when(kebunRepo.findAll()).thenReturn(List.of(new KebunJpaEntity()));
+
+        adapter.findByNamaContainingOrKodeContaining("   ", null);
+
+        verify(kebunRepo).findAll();
     }
 
     @Test

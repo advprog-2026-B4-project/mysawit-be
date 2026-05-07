@@ -91,7 +91,7 @@ class PanenCommandImplTest {
             IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> panenCommandImpl.createPanen(buruhId, "desc", 100, List.of()));
 
-            assertEquals("Buruh belum memiliki Mandor!", ex.getMessage());
+            assertEquals("Buruh belum memiliki mandor!", ex.getMessage());
             verify(repositoryPort, never()).save(any());
         }
 

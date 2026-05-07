@@ -219,7 +219,7 @@ class PanenQueryImplTest {
     @Test
     void listPanenByBuruhWithAuth_UnauthorizedAccess_ThrowsException() {
         UUID randomUserId = UUID.randomUUID();
-        UserDTO randomUser = new UserDTO(randomUserId, "random_user", "Random", "ADMIN", "random@test.com");
+        UserDTO randomUser = new UserDTO(randomUserId, "random_user", "Random", "BURUH", "random@test.com");
 
         when(userQueryUseCase.getUserById(buruhId)).thenReturn(sampleBuruh);
         when(userQueryUseCase.getUserById(randomUserId)).thenReturn(randomUser); // Bukan mandor, bukan buruh itu sendiri

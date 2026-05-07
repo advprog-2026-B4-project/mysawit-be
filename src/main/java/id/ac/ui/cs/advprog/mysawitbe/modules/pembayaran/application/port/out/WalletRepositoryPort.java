@@ -26,4 +26,10 @@ public interface WalletRepositoryPort {
     WalletBalanceDTO debit(UUID userId, int amount, UUID payrollId);
 
     List<WalletTransactionDTO> findTransactionsByUserId(UUID userId);
+
+    /**
+     * Credit the wallet for a top-up (via Midtrans callback).
+     * Uses reference string (Midtrans orderId) instead of payrollId.
+     */
+    WalletBalanceDTO creditTopUp(UUID userId, int amount, String reference);
 }

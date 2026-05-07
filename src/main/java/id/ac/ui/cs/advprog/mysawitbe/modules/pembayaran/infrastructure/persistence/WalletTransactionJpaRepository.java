@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface WalletTransactionJpaRepository extends JpaRepository<WalletTransactionEntity, UUID> {
 
 	List<WalletTransactionEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+	boolean existsByReference(String reference);
 }

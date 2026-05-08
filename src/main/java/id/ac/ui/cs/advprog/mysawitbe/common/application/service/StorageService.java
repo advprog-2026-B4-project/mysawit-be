@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.application.port.in.StorageUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.common.application.port.out.StoragePort;
+import id.ac.ui.cs.advprog.mysawitbe.common.dto.PresignedUrlResponse;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -40,5 +41,31 @@ public class StorageService implements StorageUseCase {
         } catch (Exception e) {
             throw new IllegalStateException("Gagal mengupload file: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void deletePhoto(String fileKey) {
+        if (fileKey == null || fileKey.isBlank()) {
+            throw new IllegalArgumentException("File key tidak valid.");
+        }
+        storagePort.deleteFile(fileKey);
+    }
+
+    @Override
+    public PresignedUrlResponse generatePresignedUrl(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("Content type tidak boleh kosong.");
+        }
+        if (!ALLOWED_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Hanya file JPG dan PNG yang diizinkan.");
+        }
+
+        String ext = "image/png".equals(contentType) ? ".png" : ".jpg";
+        String fileKey = "panen/" + UUID.randomUUID() + ext;
+
+        String presignedUrl = storagePort.getPresignedUrl(fileKey, contentType);
+        String publicUrl = storagePort.getPublicUrl(fileKey);
+
+        return new PresignedUrlResponse(presignedUrl, publicUrl, fileKey);
     }
 }

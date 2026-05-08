@@ -14,6 +14,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 /**
  * R2 (Cloudflare S3) storage adapter.
@@ -30,12 +33,35 @@ public class R2StorageAdapter implements StoragePort {
 
     /**
      * Build S3Client configured untuk R2.
-     * 
+     *
      * @return S3Client
      * @throws IllegalStateException jika credentials tidak valid
      */
     private S3Client buildClient() {
-        // ─── Validate credentials ───────────────────────────────────
+        validateCredentials();
+
+        System.out.println("Building R2 S3Client: endpoint=" + properties.getEndpoint()
+                + ", bucket=" + properties.getBucket());
+
+        return S3Client.builder()
+                .endpointOverride(URI.create(properties.getEndpoint()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(
+                                properties.getAccessKey(),
+                                properties.getSecretKey()
+                        )
+                ))
+                // R2 pakai region "auto" — tidak ada region nyata
+                .region(Region.of("auto"))
+                .build();
+    }
+
+    /**
+     * Validate R2 credentials are present.
+     *
+     * @throws IllegalStateException jika credentials tidak valid
+     */
+    private void validateCredentials() {
         if (properties.getAccessKey() == null || properties.getAccessKey().isBlank()) {
             throw new IllegalStateException(
                     "R2_ACCESS_KEY not configured. Set env var atau app.storage.r2.accessKey");
@@ -52,21 +78,6 @@ public class R2StorageAdapter implements StoragePort {
             throw new IllegalStateException(
                     "R2_BUCKET not configured. Set env var atau app.storage.r2.bucket");
         }
-
-        System.out.println("Building R2 S3Client: endpoint=" + properties.getEndpoint() 
-                + ", bucket=" + properties.getBucket());
-
-        return S3Client.builder()
-                .endpointOverride(URI.create(properties.getEndpoint()))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(
-                                properties.getAccessKey(), 
-                                properties.getSecretKey()
-                        )
-                ))
-                // R2 pakai region "auto" — tidak ada region nyata
-                .region(Region.of("auto"))
-                .build();
     }
 
     @Override
@@ -101,6 +112,60 @@ public class R2StorageAdapter implements StoragePort {
             System.err.println("Failed to upload file " + fileName + " to R2: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("File upload failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Build S3Presigner configured for R2.
+     *
+     * @return S3Presigner
+     */
+    private S3Presigner buildPresigner() {
+        validateCredentials();
+
+        return S3Presigner.builder()
+                .endpointOverride(URI.create(properties.getEndpoint()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(
+                                properties.getAccessKey(),
+                                properties.getSecretKey()
+                        )
+                ))
+                .region(Region.of("auto"))
+                .build();
+    }
+
+    @Override
+    public String getPresignedUrl(String fileKey, String contentType) {
+        if (fileKey == null || fileKey.isBlank()) {
+            throw new IllegalArgumentException("File key cannot be empty");
+        }
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("Content type cannot be empty");
+        }
+
+        try (S3Presigner presigner = buildPresigner()) {
+            System.out.println("Generating presigned URL for R2: " + fileKey + " (" + contentType + ")");
+
+            PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                    .signatureDuration(java.time.Duration.ofMinutes(15))
+                    .putObjectRequest(PutObjectRequest.builder()
+                            .bucket(properties.getBucket())
+                            .key(fileKey)
+                            .contentType(contentType)
+                            .build())
+                    .build();
+
+            PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
+            String presignedUrl = presignedRequest.url().toString();
+
+            System.out.println("Presigned URL generated: " + presignedUrl);
+            return presignedUrl;
+
+        } catch (Exception e) {
+            System.err.println("Failed to generate presigned URL for " + fileKey + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Presigned URL generation failed: " + e.getMessage(), e);
         }
     }
 

@@ -1,10 +1,13 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollStatusDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.RejectPayrollRequest;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpRequestDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletBalanceDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTransactionDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in.PembayaranCommandUseCase;
@@ -14,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -96,5 +100,23 @@ public class PembayaranController {
 	public ResponseEntity<ApiResponse<List<WalletTransactionDTO>>> getWalletTransactions(@PathVariable UUID userId) {
 		List<WalletTransactionDTO> result = walletQueryUseCase.getWalletTransactions(userId);
 		return ResponseEntity.ok(ApiResponse.success(result));
+	}
+
+	@PostMapping("/wallet/top-up")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<ApiResponse<TopUpResponseDTO>> initiateTopUp(
+			@Valid @RequestBody TopUpRequestDTO request,
+			@RequestAttribute("userId") UUID adminId
+	) {
+		TopUpResponseDTO result = pembayaranCommandUseCase.initiateTopUp(adminId, request.amount());
+		return ResponseEntity.ok(ApiResponse.success(result));
+	}
+
+	@PostMapping("/wallet/midtrans-callback")
+	public ResponseEntity<ApiResponse<Void>> handleMidtransCallback(
+			@RequestBody PaymentCallbackDTO payload
+	) {
+		pembayaranCommandUseCase.handlePaymentCallback(payload);
+		return ResponseEntity.ok(ApiResponse.success(null));
 	}
 }

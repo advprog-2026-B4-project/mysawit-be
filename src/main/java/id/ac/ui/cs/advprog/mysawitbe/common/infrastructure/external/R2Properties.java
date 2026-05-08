@@ -1,17 +1,14 @@
 package id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
 import lombok.Data;
 
 /**
  * R2 (Cloudflare S3) storage configuration properties.
- * 
+ *
  * Per agent.md: External config in infrastructure layer.
  * Binds to app.storage.r2.* properties from application.yml
  */
-@Component
 @ConfigurationProperties(prefix = "app.storage.r2")
 @Data
 public class R2Properties {

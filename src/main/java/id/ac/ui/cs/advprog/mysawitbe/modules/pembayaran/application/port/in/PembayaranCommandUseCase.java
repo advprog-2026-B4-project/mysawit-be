@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
@@ -67,4 +68,12 @@ public interface PembayaranCommandUseCase {
      */
     @PreAuthorize("hasRole('ADMIN')")
     void updateWageRate(String type, int newRatePerGram);
+
+    /**
+     * Initiate a wallet top-up for the admin via Midtrans Snap.
+     * Returns a redirect URL to the Midtrans Snap payment page.
+     * ADMIN only.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    TopUpResponseDTO initiateTopUp(UUID adminId, int amount);
 }

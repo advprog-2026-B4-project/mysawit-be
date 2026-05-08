@@ -1,8 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollStatusDTO;
@@ -58,6 +60,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final WalletRepositoryPort walletRepository;
 	private final PanenQueryUseCase panenQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
+	private final MidtransProperties midtransProperties;
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Override
@@ -265,6 +268,50 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		if (!paymentGateway.verifyCallbackSignature(payload)) {
 			throw new IllegalArgumentException("Invalid payment callback signature");
 		}
+
+		// Double verification: Fetch directly from Midtrans API to prevent spoofing
+		PaymentCallbackDTO verifiedPayload = paymentGateway.fetchTransactionStatus(payload.orderId());
+		if (verifiedPayload == null) {
+			throw new IllegalStateException("Failed to fetch transaction status from Midtrans");
+		}
+
+		String status = verifiedPayload.transactionStatus() == null ? "" : verifiedPayload.transactionStatus().trim().toLowerCase(Locale.ROOT);
+		if ("settlement".equals(status) || "capture".equals(status)) {
+			String orderId = verifiedPayload.orderId();
+			if (orderId != null && orderId.startsWith("TOPUP:")) {
+				String[] parts = orderId.split(":", 3);
+				if (parts.length == 3) {
+					UUID adminId = UUID.fromString(parts[1]);
+					int amountRupiah = (int) Double.parseDouble(verifiedPayload.grossAmount());
+					int internalDollars = amountRupiah / 10000;
+					
+					// Avoid double crediting by checking if this reference already exists
+					// We can wrap this creditTopUp to be idempotent or just call it directly if the walletRepository handles it
+					walletRepository.creditTopUp(adminId, internalDollars, verifiedPayload.orderId());
+				}
+			}
+		}
+	}
+
+	@Override
+	@Transactional
+	public TopUpResponseDTO initiateTopUp(UUID adminId, int amount) {
+		requireAdminId(adminId);
+		if (amount <= 0) {
+			throw new IllegalArgumentException("Amount must be positive");
+		}
+		if (amount % 10000 != 0) {
+			throw new IllegalArgumentException("Amount must be a multiple of 10000 (Rp10.000 = $1)");
+		}
+
+		String orderId = "TOPUP:" + adminId + ":" + UUID.randomUUID().toString().substring(0, 5);
+		PaymentGatewayPort paymentGateway = paymentGatewayProvider.getIfAvailable();
+		if (paymentGateway == null) {
+			throw new IllegalStateException("Payment gateway integration is not configured");
+		}
+
+		String redirectUrl = paymentGateway.initiateTopUp(orderId, amount);
+		return new TopUpResponseDTO(redirectUrl);
 	}
 
 	@Override

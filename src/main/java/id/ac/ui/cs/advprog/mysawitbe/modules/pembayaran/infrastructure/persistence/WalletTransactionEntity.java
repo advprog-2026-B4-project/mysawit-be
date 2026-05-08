@@ -36,6 +36,9 @@ public class WalletTransactionEntity {
 	@Column(name = "payroll_id")
 	private UUID payrollId;
 
+	@Column(name = "reference", length = 64)
+	private String reference;
+
 	@Column(name = "amount", nullable = false)
 	private int amount;
 
@@ -45,10 +48,10 @@ public class WalletTransactionEntity {
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
 
-	@PrePersist
-	void prePersist() {
-		if (createdAt == null) {
-			createdAt = LocalDateTime.now();
-		}
-	}
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

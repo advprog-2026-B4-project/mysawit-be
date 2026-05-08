@@ -73,10 +73,10 @@ public class PayrollEntity {
 	@Column(name = "payment_reference", length = 255)
 	private String paymentReference;
 
-	@PrePersist
-	void prePersist() {
-		if (createdAt == null) {
-			createdAt = LocalDateTime.now();
-		}
-	}
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

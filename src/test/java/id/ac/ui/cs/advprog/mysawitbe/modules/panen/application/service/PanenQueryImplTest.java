@@ -170,6 +170,8 @@ class PanenQueryImplTest {
     @Test
     void hasPanenToday_Success() {
         LocalDate date = LocalDate.now();
+        when(userQueryUseCase.getMandorIdByBuruhId(buruhId)).thenReturn(mandorId);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
         when(repositoryPort.existsByBuruhIdAndDate(buruhId, date)).thenReturn(true);
 
         boolean result = panenQuery.hasPanenToday(buruhId, date);

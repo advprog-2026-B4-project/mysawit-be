@@ -1,10 +1,10 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in;
 
-import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 
 public interface PanenQueryUseCase {
 
@@ -24,4 +24,6 @@ public interface PanenQueryUseCase {
             String status) throws IllegalAccessException;
 
     boolean hasPanenToday(UUID buruhId, LocalDate date);
+
+    List<PanenDTO> listPanenForAdmin(String buruhName, LocalDate startDate, LocalDate endDate, String status);
 }

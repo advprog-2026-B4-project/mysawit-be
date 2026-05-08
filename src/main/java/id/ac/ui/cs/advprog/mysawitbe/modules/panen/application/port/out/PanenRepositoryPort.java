@@ -26,4 +26,6 @@ public interface PanenRepositoryPort {
     List<PanenDTO> findByBuruhId(UUID buruhId, LocalDate startDate, LocalDate endDate, String status);
 
     List<PanenDTO> findByKebunIdAndDate(UUID kebunId, LocalDate date);
+
+    List<PanenDTO> findAllWithFilters(String status, LocalDate startDate, LocalDate endDate);
 }

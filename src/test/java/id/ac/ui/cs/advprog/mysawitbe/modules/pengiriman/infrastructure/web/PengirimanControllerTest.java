@@ -260,4 +260,101 @@ class PengirimanControllerTest {
                 .andExpect(jsonPath("$.data.status").value("PARTIAL"))
                 .andExpect(jsonPath("$.data.statusReason").value("Sebagian rusak"));
     }
+
+    @Test
+    void listActiveDeliveriesByMandor_returns200WithData() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        when(queryUseCase.listActiveDeliveriesByMandor(mandorId)).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/active")
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].pengirimanId").value(sample.pengirimanId().toString()));
+
+        verify(queryUseCase).listActiveDeliveriesByMandor(mandorId);
+    }
+
+    @Test
+    void listDeliveriesOfSupirByMandor_returns200WithData() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        when(queryUseCase.listDeliveriesOfSupirByMandor(mandorId, supirId)).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/pengiriman/supir/{supirId}/mandor", supirId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].supirId").value(supirId.toString()));
+
+        verify(queryUseCase).listDeliveriesOfSupirByMandor(mandorId, supirId);
+    }
+
+    @Test
+    void mandorApproveDelivery_returns200WithApprovedStatus() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID pengirimanId = UUID.randomUUID();
+        when(commandUseCase.mandorApproveDelivery(pengirimanId, mandorId))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        null,
+                        mandorId,
+                        null,
+                        "APPROVED_MANDOR",
+                        140000,
+                        0,
+                        null,
+                        List.of(),
+                        LocalDateTime.now()
+                ));
+
+        mockMvc.perform(post("/api/pengiriman/{pengirimanId}/approve", pengirimanId)
+                        .requestAttr("userId", mandorId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED_MANDOR"));
+    }
+
+    @Test
+    void mandorRejectDelivery_returns200WithRejectedStatus() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID pengirimanId = UUID.randomUUID();
+        when(commandUseCase.mandorRejectDelivery(pengirimanId, mandorId, "Tidak lengkap"))
+                .thenReturn(new PengirimanDTO(
+                        pengirimanId,
+                        supirId,
+                        null,
+                        mandorId,
+                        null,
+                        "REJECTED_MANDOR",
+                        140000,
+                        0,
+                        "Tidak lengkap",
+                        List.of(),
+                        LocalDateTime.now()
+                ));
+
+        mockMvc.perform(post("/api/pengiriman/{pengirimanId}/reject", pengirimanId)
+                        .requestAttr("userId", mandorId)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "reason": "Tidak lengkap"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("REJECTED_MANDOR"))
+                .andExpect(jsonPath("$.data.statusReason").value("Tidak lengkap"));
+    }
+
+    @Test
+    void listApprovedDeliveriesForAdmin_returns200WithFilteredData() throws Exception {
+        LocalDate date = LocalDate.of(2026, 4, 1);
+        when(queryUseCase.listApprovedDeliveriesForAdmin("Awan", date)).thenReturn(List.of(sample));
+
+        mockMvc.perform(get("/api/pengiriman/admin/approved")
+                        .param("mandorName", "Awan")
+                        .param("date", "2026-04-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].pengirimanId").value(sample.pengirimanId().toString()));
+
+        verify(queryUseCase).listApprovedDeliveriesForAdmin("Awan", date);
+    }
 }

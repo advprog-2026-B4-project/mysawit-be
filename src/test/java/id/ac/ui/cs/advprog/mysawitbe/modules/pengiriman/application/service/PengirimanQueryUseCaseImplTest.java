@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
@@ -358,6 +359,90 @@ class PengirimanQueryUseCaseImplTest {
     }
 
     @Test
+    void recommendAssignmentForMandor_usesKnapsackToMaximizeWeightUnderDefaultCapacity() {
+        UUID mandorId = UUID.randomUUID();
+        UUID kebunId = UUID.randomUUID();
+        UUID panenA = UUID.randomUUID();
+        UUID panenB = UUID.randomUUID();
+        UUID panenC = UUID.randomUUID();
+        UUID panenD = UUID.randomUUID();
+
+        when(kebunQueryUseCaseProvider.getIfAvailable()).thenReturn(kebunQueryUseCase);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
+        when(panenQueryUseCase.getApprovedPanenByKebun(kebunId)).thenReturn(List.of(
+                panen(panenA, kebunId, "A", 240000),
+                panen(panenB, kebunId, "B", 210000),
+                panen(panenC, kebunId, "C", 190000),
+                panen(panenD, kebunId, "D", 160000)
+        ));
+        when(repository.findAssignedPanenIds(List.of(panenA, panenB, panenC, panenD))).thenReturn(List.of());
+
+        AssignmentRecommendationDTO result = service.recommendAssignmentForMandor(mandorId, null);
+
+        assertThat(result.maxCapacity()).isEqualTo(400000);
+        assertThat(result.totalWeight()).isEqualTo(400000);
+        assertThat(result.remainingCapacity()).isZero();
+        assertThat(result.panenIds()).containsExactly(panenB, panenC);
+        assertThat(result.panenItems()).extracting(AssignablePanenDTO::description).containsExactly("B", "C");
+    }
+
+    @Test
+    void recommendAssignmentForMandor_withCustomCapacity_skipsInvalidAndOverweightPanen() {
+        UUID mandorId = UUID.randomUUID();
+        UUID kebunId = UUID.randomUUID();
+        UUID validA = UUID.randomUUID();
+        UUID validB = UUID.randomUUID();
+        UUID overweight = UUID.randomUUID();
+        UUID zero = UUID.randomUUID();
+
+        when(kebunQueryUseCaseProvider.getIfAvailable()).thenReturn(kebunQueryUseCase);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
+        when(panenQueryUseCase.getApprovedPanenByKebun(kebunId)).thenReturn(List.of(
+                panen(validA, kebunId, "Valid A", 120000),
+                panen(validB, kebunId, "Valid B", 80000),
+                panen(overweight, kebunId, "Too heavy", 250000),
+                panen(zero, kebunId, "Zero", 0)
+        ));
+        when(repository.findAssignedPanenIds(List.of(validA, validB, overweight, zero))).thenReturn(List.of());
+
+        AssignmentRecommendationDTO result = service.recommendAssignmentForMandor(mandorId, 200000);
+
+        assertThat(result.totalWeight()).isEqualTo(200000);
+        assertThat(result.remainingCapacity()).isZero();
+        assertThat(result.panenIds()).containsExactly(validA, validB);
+    }
+
+    @Test
+    void recommendAssignmentForMandor_whenNoCandidateFits_returnsEmptyRecommendation() {
+        UUID mandorId = UUID.randomUUID();
+        UUID kebunId = UUID.randomUUID();
+        UUID panenId = UUID.randomUUID();
+
+        when(kebunQueryUseCaseProvider.getIfAvailable()).thenReturn(kebunQueryUseCase);
+        when(kebunQueryUseCase.findKebunIdByMandorId(mandorId)).thenReturn(kebunId);
+        when(panenQueryUseCase.getApprovedPanenByKebun(kebunId)).thenReturn(List.of(
+                panen(panenId, kebunId, "Too heavy", 500000)
+        ));
+        when(repository.findAssignedPanenIds(List.of(panenId))).thenReturn(List.of());
+
+        AssignmentRecommendationDTO result = service.recommendAssignmentForMandor(mandorId, 400000);
+
+        assertThat(result.panenIds()).isEmpty();
+        assertThat(result.panenItems()).isEmpty();
+        assertThat(result.totalWeight()).isZero();
+        assertThat(result.remainingCapacity()).isEqualTo(400000);
+    }
+
+    @Test
+    void recommendAssignmentForMandor_withInvalidCapacity_throwsBadRequestError() {
+        assertThatThrownBy(() -> service.recommendAssignmentForMandor(UUID.randomUUID(), 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Max capacity must be greater than 0");
+
+        verifyNoInteractions(kebunQueryUseCaseProvider, repository, panenQueryUseCase);
+    }
+
+    @Test
     void listActiveDeliveriesByMandor_enrichesFallbackNames() {
         UUID mandorId = UUID.randomUUID();
         UUID supirId = UUID.randomUUID();
@@ -450,6 +535,21 @@ class PengirimanQueryUseCaseImplTest {
                 0,
                 null,
                 List.of(UUID.randomUUID()),
+                LocalDateTime.now()
+        );
+    }
+
+    private PanenDTO panen(UUID panenId, UUID kebunId, String description, int weight) {
+        return new PanenDTO(
+                panenId,
+                UUID.randomUUID(),
+                "Buruh " + description,
+                kebunId,
+                description,
+                weight,
+                "APPROVED",
+                null,
+                List.of(),
                 LocalDateTime.now()
         );
     }

@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.exception.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
@@ -224,6 +225,63 @@ class PengirimanControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].panenId").value(panenId.toString()))
                 .andExpect(jsonPath("$.data[0].weight").value(175000));
+    }
+
+    @Test
+    void recommendAssignmentForMandor_returnsKnapsackRecommendation() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        UUID panenA = UUID.randomUUID();
+        UUID panenB = UUID.randomUUID();
+        AssignablePanenDTO itemA = new AssignablePanenDTO(
+                panenA,
+                UUID.randomUUID(),
+                "Buruh A",
+                "Panen pagi",
+                210000,
+                LocalDateTime.of(2026, 4, 12, 8, 30)
+        );
+        AssignablePanenDTO itemB = new AssignablePanenDTO(
+                panenB,
+                UUID.randomUUID(),
+                "Buruh B",
+                "Panen siang",
+                190000,
+                LocalDateTime.of(2026, 4, 12, 12, 0)
+        );
+        when(queryUseCase.recommendAssignmentForMandor(mandorId, 400000))
+                .thenReturn(new AssignmentRecommendationDTO(
+                        List.of(panenA, panenB),
+                        List.of(itemA, itemB),
+                        400000,
+                        400000,
+                        0
+                ));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/recommendation")
+                        .requestAttr("userId", mandorId)
+                        .param("maxCapacity", "400000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.panenIds[0]").value(panenA.toString()))
+                .andExpect(jsonPath("$.data.panenItems[1].panenId").value(panenB.toString()))
+                .andExpect(jsonPath("$.data.totalWeight").value(400000))
+                .andExpect(jsonPath("$.data.remainingCapacity").value(0));
+
+        verify(queryUseCase).recommendAssignmentForMandor(mandorId, 400000);
+    }
+
+    @Test
+    void recommendAssignmentForMandor_invalidCapacity_returns400() throws Exception {
+        UUID mandorId = UUID.randomUUID();
+        when(queryUseCase.recommendAssignmentForMandor(mandorId, 0))
+                .thenThrow(new IllegalArgumentException("Max capacity must be greater than 0"));
+
+        mockMvc.perform(get("/api/pengiriman/mandor/recommendation")
+                        .requestAttr("userId", mandorId)
+                        .param("maxCapacity", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Max capacity must be greater than 0"));
     }
 
     @Test

@@ -34,4 +34,19 @@ class KebunJpaMapperTest {
         assertThat(mapper.toEntity(null)).isNull();
         assertThat(mapper.toDto((KebunJpaEntity) null)).isNull();
     }
+
+    @Test
+    void testNullCoordinateLists() {
+        KebunJpaMapperImpl mapper = new KebunJpaMapperImpl();
+        org.springframework.test.util.ReflectionTestUtils.setField(mapper, "coordinateJpaMapper", new CoordinateJpaMapperImpl());
+
+        UUID kebunId = UUID.randomUUID();
+        KebunDTO dto = new KebunDTO(kebunId, "Nama", "KB-01", 10, null);
+        KebunJpaEntity entity = mapper.toEntity(dto);
+        assertThat(entity.getCoordinates()).isNull();
+
+        KebunJpaEntity entityWithNullCoordinates = new KebunJpaEntity(kebunId, "Nama", "KB-01", 10, null, null);
+        KebunDTO mappedDto = mapper.toDto(entityWithNullCoordinates);
+        assertThat(mappedDto.coordinates()).isNull();
+    }
 }

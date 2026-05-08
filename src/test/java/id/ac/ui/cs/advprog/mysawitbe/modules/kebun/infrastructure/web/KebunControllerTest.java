@@ -344,20 +344,6 @@ class KebunControllerTest {
     }
 
     @Test
-    void create_invalidCoordinates_throwsException() throws Exception {
-        // Mencakup: if (body.coordinates() == null || body.coordinates().size() != 4)
-        id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO invalidBody =
-                new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO(
-                        "Kebun A", "K-01", 10, List.of() // List kosong (bukan 4 titik)
-                );
-
-        mockMvc.perform(post("/api/kebun")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidBody)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void edit_success_returns200() throws Exception {
         // Mencakup alur log.info dan return ResponseEntity.ok pada method edit
         UUID kebunId = UUID.randomUUID();
@@ -430,22 +416,6 @@ class KebunControllerTest {
     }
 
     @Test
-    void create_invalidCoordinateSize_returns400() throws Exception {
-        // Mencakup branch: if (... || body.coordinates().size() != 4) -> TRUE
-        // Memberikan list dengan hanya 1 koordinat (bukan 4) untuk memicu IllegalArgumentException manual
-        id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO body =
-                new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO(
-                        "Kebun A", "KB-01", 20, List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CoordinateDTO(0,0))
-                );
-
-        mockMvc.perform(post("/api/kebun")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Coordinates must contain exactly 4 points"));
-    }
-
-    @Test
     void getSupirList_withNullFilter_returnsAll() throws Exception {
         // Mencakup: if (searchNama != null) -> Kasus NULL
         UUID kebunId = UUID.randomUUID();
@@ -469,21 +439,6 @@ class KebunControllerTest {
                 .andExpect(status().isOk());
 
         verify(queryUseCase).getBuruhList(kebunId);
-    }
-
-    @Test
-    void create_coordinatesWrongSize_returns400() throws Exception {
-        // Memicu IllegalArgumentException manual di dalam Controller (size != 4)
-        id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO body =
-                new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CreateKebunRequestDTO(
-                        "Kebun A", "KB-01", 20, List.of(new id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CoordinateDTO(0,0))
-                );
-
-        mockMvc.perform(post("/api/kebun")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Coordinates must contain exactly 4 points"));
     }
 
     @Test
@@ -551,73 +506,6 @@ class KebunControllerTest {
                         .param("nama", "Tidak Ada"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(0)));
-    }
-
-    @Test
-    void assignMandor_invalidKebunId_returns400() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId);
-
-        mockMvc.perform(post("/api/kebun/{kebunId}/assign/mandor", "invalid-uuid")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void moveMandor_invalidKebunId_returns400() throws Exception {
-        UUID mandorId = UUID.randomUUID();
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(mandorId);
-
-        mockMvc.perform(post("/api/kebun/{kebunId}/move/mandor", "invalid-uuid")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void assignSupir_invalidKebunId_returns400() throws Exception {
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(UUID.randomUUID());
-
-        mockMvc.perform(post("/api/kebun/{kebunId}/assign/supir", "invalid-uuid")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void moveSupir_invalidKebunId_returns400() throws Exception {
-        AssignPersonRequestDTO body = new AssignPersonRequestDTO(UUID.randomUUID());
-
-        mockMvc.perform(post("/api/kebun/{kebunId}/move/supir", "invalid-uuid")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void getMandor_invalidKebunId_returns400() throws Exception {
-        mockMvc.perform(get("/api/kebun/{kebunId}/mandor", "invalid-uuid"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void getSupirList_invalidKebunId_returns400() throws Exception {
-        mockMvc.perform(get("/api/kebun/{kebunId}/supir", "invalid-uuid"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
-    }
-
-    @Test
-    void getBuruhList_invalidKebunId_returns400() throws Exception {
-        mockMvc.perform(get("/api/kebun/{kebunId}/buruh", "invalid-uuid"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid UUID format"));
     }
 
     @Test

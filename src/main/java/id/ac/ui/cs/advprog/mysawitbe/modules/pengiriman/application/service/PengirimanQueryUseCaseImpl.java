@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
@@ -18,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
 
     private static final String SUPIR_ROLE = "SUPIR";
+    private static final int DEFAULT_MAX_CAPACITY_GRAMS = 400_000;
     private static final String KEBUN_QUERY_UNAVAILABLE_MESSAGE =
             "Kebun query dependency is unavailable. Integrasi modul kebun belum siap.";
 
@@ -108,6 +113,30 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
     }
 
     @Override
+    public AssignmentRecommendationDTO recommendAssignmentForMandor(UUID mandorId, Integer maxCapacity) {
+        int capacity = maxCapacity == null ? DEFAULT_MAX_CAPACITY_GRAMS : maxCapacity;
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Max capacity must be greater than 0");
+        }
+
+        List<AssignablePanenDTO> candidates = listAssignablePanenForMandor(mandorId).stream()
+                .filter(panen -> panen.weight() > 0 && panen.weight() <= capacity)
+                .toList();
+        List<AssignablePanenDTO> selected = solveKnapsack(candidates, capacity);
+        int totalWeight = selected.stream()
+                .mapToInt(AssignablePanenDTO::weight)
+                .sum();
+
+        return new AssignmentRecommendationDTO(
+                selected.stream().map(AssignablePanenDTO::panenId).toList(),
+                selected,
+                totalWeight,
+                capacity,
+                capacity - totalWeight
+        );
+    }
+
+    @Override
     public List<PengirimanDTO> listActiveDeliveriesByMandor(UUID mandorId) {
         return repository.findActiveByMandorId(mandorId).stream()
                 .map(this::enrichUserNames)
@@ -169,6 +198,40 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
             throw new KebunQueryDependencyUnavailableException(KEBUN_QUERY_UNAVAILABLE_MESSAGE);
         }
         return kebunQueryUseCase;
+    }
+
+    private List<AssignablePanenDTO> solveKnapsack(List<AssignablePanenDTO> candidates, int capacity) {
+        boolean[] reachable = new boolean[capacity + 1];
+        int[] previousWeight = new int[capacity + 1];
+        int[] previousItem = new int[capacity + 1];
+        Arrays.fill(previousWeight, -1);
+        Arrays.fill(previousItem, -1);
+        reachable[0] = true;
+
+        for (int itemIndex = 0; itemIndex < candidates.size(); itemIndex++) {
+            int itemWeight = candidates.get(itemIndex).weight();
+            for (int weight = capacity; weight >= itemWeight; weight--) {
+                if (!reachable[weight] && reachable[weight - itemWeight]) {
+                    reachable[weight] = true;
+                    previousWeight[weight] = weight - itemWeight;
+                    previousItem[weight] = itemIndex;
+                }
+            }
+        }
+
+        int bestWeight = capacity;
+        while (bestWeight > 0 && !reachable[bestWeight]) {
+            bestWeight--;
+        }
+
+        List<AssignablePanenDTO> selected = new ArrayList<>();
+        int cursor = bestWeight;
+        while (cursor > 0) {
+            selected.add(candidates.get(previousItem[cursor]));
+            cursor = previousWeight[cursor];
+        }
+        Collections.reverse(selected);
+        return selected;
     }
 
     private PengirimanDTO enrichUserNames(PengirimanDTO dto) {

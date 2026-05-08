@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.web;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
@@ -93,6 +94,16 @@ public class PengirimanController {
             @RequestAttribute("userId") UUID mandorId
     ) {
         List<AssignablePanenDTO> result = queryUseCase.listAssignablePanenForMandor(mandorId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/mandor/recommendation")
+    @PreAuthorize("hasRole('MANDOR')")
+    public ResponseEntity<ApiResponse<AssignmentRecommendationDTO>> recommendAssignmentForMandor(
+            @RequestAttribute("userId") UUID mandorId,
+            @RequestParam(required = false) Integer maxCapacity
+    ) {
+        AssignmentRecommendationDTO result = queryUseCase.recommendAssignmentForMandor(mandorId, maxCapacity);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

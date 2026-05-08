@@ -117,6 +117,9 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                 isMandorSupervise = buruhByMandor.stream()
                         .anyMatch(b -> b.userId().equals(buruhId));
             }
+            else if ("ADMIN".equals(requester.role())) {
+                isMandorSupervise = true; // Admin boleh lihat semua data
+            }
         } catch (Exception e) {
             isMandorSupervise = false;
         }
@@ -128,5 +131,30 @@ public class PanenQueryImpl implements PanenQueryUseCase {
 
         // ─── Step 3: Query panen ───────────────────────────────────
         return listPanenByBuruh(buruhId, startDate, endDate, status);
+    }
+
+    @Override
+    public List<PanenDTO> listPanenForAdmin(String buruhName, LocalDate startDate, LocalDate endDate, String status) {
+        
+        // 1. Ambil data dari DB berdasarkan tanggal dan status saja (HAPUS parameter buruhName di sini)
+        List<PanenDTO> allPanen = repositoryPort.findAllWithFilters(status, startDate, endDate);
+
+        // 2. Mapping nama buruh dari Auth dan filter secara manual dengan stream
+        return allPanen.stream()
+                .map(panen -> {
+                    String namaAsli = userQueryUseCase.getUserById(panen.buruhId()).name();
+                    return new PanenDTO(
+                            panen.panenId(), panen.buruhId(), namaAsli,
+                            panen.kebunId(), panen.description(), panen.weight(),
+                            panen.status(), panen.rejectionReason(), 
+                            panen.photos(), 
+                            panen.timestamp()
+                    );
+                })
+                .filter(panen -> {
+                    if (buruhName == null || buruhName.isBlank()) return true;
+                    return panen.buruhName().toLowerCase().contains(buruhName.trim().toLowerCase());
+                })
+                .toList();
     }
 }

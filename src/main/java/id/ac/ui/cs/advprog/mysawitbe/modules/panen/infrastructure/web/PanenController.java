@@ -216,4 +216,26 @@ public class PanenController {
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @GetMapping("/admin/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PanenDTO>>> listPanenForAdmin(
+            @RequestParam(required = false) String buruhName,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) String status) {
+        
+        try {
+            // ─── Query all panen ───────────────────────────────────
+            List<PanenDTO> result = queryUseCase.listPanenForAdmin(
+                    buruhName, startDate, endDate, status);
+            return ResponseEntity.ok(
+                    ApiResponse.success("Daftar semua laporan panen", result));
+
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+        }
+    }
 }

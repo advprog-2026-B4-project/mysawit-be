@@ -42,7 +42,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
         UUID mandorId = userQueryUseCase.getMandorIdByBuruhId(buruhId);
         if (mandorId == null) {
-            throw new IllegalStateException("Buruh belum memiliki Mandor!");
+            throw new IllegalStateException("Buruh belum memiliki mandor!");
         }
 
         UUID kebunId = kebunQueryUseCase.findKebunIdByMandorId(mandorId);

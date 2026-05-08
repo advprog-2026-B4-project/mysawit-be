@@ -35,9 +35,23 @@ public interface PanenJpaRepository extends JpaRepository<PanenEntity, UUID> {
 
     @Query("SELECT p FROM PanenEntity p WHERE p.kebunId = :kebunId " +
        "AND (CAST(:date AS java.time.LocalDate) IS NULL OR p.harvestDate = :date)")
-List<PanenEntity> findByKebunIdAndDateFilter(@Param("kebunId") UUID kebunId, 
+    List<PanenEntity> findByKebunIdAndDateFilter(@Param("kebunId") UUID kebunId, 
                                               @Param("date") LocalDate date);
 
     @Query("SELECT p FROM PanenEntity p WHERE p.kebunId = :kebunId")
     List<PanenEntity> findByKebunId(@Param("kebunId") UUID kebunId);
+
+    @Query("""
+      SELECT DISTINCT p FROM PanenEntity p
+      LEFT JOIN FETCH p.photos
+      WHERE (:status IS NULL OR p.status = :status)
+        AND (CAST(:startDate AS java.time.LocalDate) IS NULL OR p.harvestDate >= :startDate)
+        AND (CAST(:endDate AS java.time.LocalDate) IS NULL OR p.harvestDate <= :endDate)
+      ORDER BY p.createdAt DESC
+    """)
+    List<PanenEntity> findAllWithFilters(
+            @Param("status") PanenStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 }

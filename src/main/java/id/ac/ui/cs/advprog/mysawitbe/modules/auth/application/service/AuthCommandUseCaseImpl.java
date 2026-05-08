@@ -93,7 +93,8 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                 name,
                 normalizedRole,
                 email,
-                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null
+                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null,
+                null
         );
         return userRepository.save(dto, hashed);
     }
@@ -156,7 +157,8 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                 pendingRegistration.name(),
                 normalizedRole,
                 pendingRegistration.email(),
-                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null
+                UserRole.MANDOR.name().equals(normalizedRole) ? normalizedCertificationNumber : null,
+                null
         );
 
         UserDTO saved = userRepository.save(newUser, null);
@@ -195,7 +197,8 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                 name,
                 normalizedRole,
                 email,
-                effectiveCertificationNumber
+                effectiveCertificationNumber,
+                existing.mandorId()
         );
         return userRepository.save(updated, userRepository.findPasswordHashByEmail(existing.email()));
     }

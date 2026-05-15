@@ -70,6 +70,20 @@ class PengirimanControllerTest {
     }
 
     @Test
+    void getPengirimanById_returns200WithData() throws Exception {
+        UUID pengirimanId = sample.pengirimanId();
+        when(queryUseCase.getPengirimanById(pengirimanId)).thenReturn(sample);
+
+        mockMvc.perform(get("/api/pengiriman/{pengirimanId}", pengirimanId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.pengirimanId").value(pengirimanId.toString()))
+                .andExpect(jsonPath("$.data.status").value("ASSIGNED"));
+
+        verify(queryUseCase).getPengirimanById(pengirimanId);
+    }
+
+    @Test
     void listDeliveriesBySupir_returns200WithData() throws Exception {
         when(queryUseCase.listDeliveriesBySupir(eq(supirId), isNull(), isNull()))
                 .thenReturn(List.of(sample));

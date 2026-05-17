@@ -21,4 +21,6 @@ public interface NotificationRepositoryPort {
     List<NotificationDTO> findByUserId(UUID userId);
 
     void markAsRead(UUID notificationId);
+
+    void markAllAsReadByUserId(UUID userId);
 }

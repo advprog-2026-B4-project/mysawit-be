@@ -29,8 +29,30 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
 
     @Override
     public PengirimanDTO save(PengirimanDTO pengirimanDTO) {
+        if (pengirimanDTO.pengirimanId() != null) {
+            return jpaRepository.findById(pengirimanDTO.pengirimanId())
+                    .map(existing -> updateExisting(existing, pengirimanDTO))
+                    .map(jpaRepository::save)
+                    .map(mapper::toDto)
+                    .orElseGet(() -> saveNew(pengirimanDTO));
+        }
+        return saveNew(pengirimanDTO);
+    }
+
+    private PengirimanDTO saveNew(PengirimanDTO pengirimanDTO) {
         PengirimanJpaEntity entity = mapper.toEntity(pengirimanDTO);
         return mapper.toDto(jpaRepository.save(entity));
+    }
+
+    private PengirimanJpaEntity updateExisting(PengirimanJpaEntity existing, PengirimanDTO pengirimanDTO) {
+        existing.setSupirId(pengirimanDTO.supirId());
+        existing.setMandorId(pengirimanDTO.mandorId());
+        existing.setStatus(pengirimanDTO.status());
+        existing.setTotalWeight(pengirimanDTO.totalWeight());
+        existing.setAcceptedWeight(pengirimanDTO.acceptedWeight());
+        existing.setStatusReason(pengirimanDTO.statusReason());
+        existing.setTimestamp(pengirimanDTO.timestamp());
+        return existing;
     }
 
     @Override

@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Pengirim
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaEntity;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaRepository;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanPanenItemJpaEntity;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.mapper.PengirimanMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -58,12 +60,56 @@ class PengirimanRepositoryAdapterTest {
     }
 
     @Test
-    void save_mapsEntityThroughRepository() {
+    void save_newDelivery_mapsEntityThroughRepository() {
+        PengirimanDTO newDto = new PengirimanDTO(null, supirId, mandorId, "ASSIGNED", 100000, 0, dto.timestamp());
+        when(mapper.toEntity(newDto)).thenReturn(entity);
+        when(jpaRepository.save(entity)).thenReturn(entity);
+        when(mapper.toDto(entity)).thenReturn(newDto);
+
+        assertThat(adapter.save(newDto)).isSameAs(newDto);
+    }
+
+    @Test
+    void save_existingIdNotFound_mapsEntityAsNewDelivery() {
+        when(jpaRepository.findById(pengirimanId)).thenReturn(Optional.empty());
         when(mapper.toEntity(dto)).thenReturn(entity);
         when(jpaRepository.save(entity)).thenReturn(entity);
         when(mapper.toDto(entity)).thenReturn(dto);
 
         assertThat(adapter.save(dto)).isSameAs(dto);
+    }
+
+    @Test
+    void save_existingDelivery_updatesScalarFieldsWithoutRecreatingPanenItems() {
+        UUID panenId = UUID.randomUUID();
+        PengirimanPanenItemJpaEntity existingItem = PengirimanPanenItemJpaEntity.builder()
+                .pengirimanItemId(UUID.randomUUID())
+                .panenId(panenId)
+                .build();
+        entity.setPanenItems(List.of(existingItem));
+        PengirimanDTO updated = new PengirimanDTO(
+                pengirimanId,
+                supirId,
+                null,
+                mandorId,
+                null,
+                "IN_TRANSIT",
+                100000,
+                0,
+                "Mulai dikirim",
+                List.of(panenId),
+                dto.timestamp().plusMinutes(5)
+        );
+
+        when(jpaRepository.findById(pengirimanId)).thenReturn(Optional.of(entity));
+        when(jpaRepository.save(entity)).thenReturn(entity);
+        when(mapper.toDto(entity)).thenReturn(updated);
+
+        assertThat(adapter.save(updated)).isSameAs(updated);
+        assertThat(entity.getStatus()).isEqualTo("IN_TRANSIT");
+        assertThat(entity.getStatusReason()).isEqualTo("Mulai dikirim");
+        assertThat(entity.getPanenItems()).containsExactly(existingItem);
+        verify(mapper, never()).toEntity(updated);
     }
 
     @Test

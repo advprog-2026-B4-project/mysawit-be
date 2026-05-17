@@ -58,10 +58,6 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 		}
 
 		WalletEntity wallet = findOrCreateWallet(userId);
-		if (wallet.getBalance() < amount) {
-			throw new IllegalStateException("Insufficient admin wallet balance");
-		}
-
 		wallet.setBalance(wallet.getBalance() - amount);
 		WalletEntity savedWallet = walletJpaRepository.save(wallet);
 

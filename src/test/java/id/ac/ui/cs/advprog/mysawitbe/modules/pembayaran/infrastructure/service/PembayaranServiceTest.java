@@ -249,7 +249,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 10000), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
     }
 
     @Test
@@ -275,7 +275,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 10000), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
     }
 
     @Test

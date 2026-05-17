@@ -71,4 +71,13 @@ public class UserQueryUseCaseImpl implements UserQueryUseCase {
         }
         return users;
     }
+
+    @Override
+    public UUID getAnyAdminId() {
+        List<UserDTO> admins = userRepository.findByRole("ADMIN");
+        if (admins == null || admins.isEmpty()) {
+            throw new EntityNotFoundException("No admin user found");
+        }
+        return admins.get(0).userId();
+    }
 }

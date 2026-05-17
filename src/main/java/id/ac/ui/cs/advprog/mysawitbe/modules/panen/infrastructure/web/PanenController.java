@@ -35,18 +35,39 @@ public class PanenController {
     private final PanenCommandUseCase commandUseCase;
     private final PanenQueryUseCase queryUseCase;
 
+    @GetMapping("/admin/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PanenDTO>>> listPanenForAdmin(
+            @RequestParam(required = false) String buruhName,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) String status) {
+
+        try {
+            List<PanenDTO> result = queryUseCase.listPanenForAdmin(
+                    buruhName, startDate, endDate, status);
+            return ResponseEntity.ok(
+                    ApiResponse.success("Daftar semua laporan panen", result));
+
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/{panenId}")
     public ResponseEntity<ApiResponse<PanenDTO>> getPanenById(@PathVariable UUID panenId) {
         try {
             PanenDTO responseData = queryUseCase.getPanenById(panenId);
             return ResponseEntity.ok(
                     ApiResponse.success("Detail panen", responseData));
-                    
+
         } catch (EntityNotFoundException e) {
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(e.getMessage()));
-                    
+
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -156,7 +177,7 @@ public class PanenController {
             boolean isSubmitted = queryUseCase.hasPanenToday(buruhId, LocalDate.now());
             return ResponseEntity.ok(
                     ApiResponse.success("Panen sudah disubmit hari ini", isSubmitted));
-                    
+
         } catch (IllegalStateException e) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
@@ -219,27 +240,5 @@ public class PanenController {
         };
 
         return ResponseEntity.ok(ApiResponse.success(result));
-    }
-
-    @GetMapping("/admin/list")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<PanenDTO>>> listPanenForAdmin(
-            @RequestParam(required = false) String buruhName,
-            @RequestParam(required = false) LocalDate startDate,
-            @RequestParam(required = false) LocalDate endDate,
-            @RequestParam(required = false) String status) {
-        
-        try {
-            // ─── Query all panen ───────────────────────────────────
-            List<PanenDTO> result = queryUseCase.listPanenForAdmin(
-                    buruhName, startDate, endDate, status);
-            return ResponseEntity.ok(
-                    ApiResponse.success("Daftar semua laporan panen", result));
-
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
-        }
     }
 }

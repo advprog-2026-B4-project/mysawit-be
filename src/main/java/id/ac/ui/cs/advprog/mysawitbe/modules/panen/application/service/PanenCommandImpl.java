@@ -82,6 +82,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
         eventPublisher.publishEvent(new PanenApprovedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),
+                mandorId,
                 updatedDto.kebunId(),
                 updatedDto.weight(),
                 updatedDto.timestamp()

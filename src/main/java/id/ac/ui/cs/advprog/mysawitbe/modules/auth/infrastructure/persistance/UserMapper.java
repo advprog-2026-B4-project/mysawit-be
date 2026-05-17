@@ -12,6 +12,7 @@ public interface UserMapper {
     // JPA Entity -> Domain
     @Mapping(target = "hashedPassword", source = "password")
     @Mapping(target = "role", expression = "java(id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole.valueOf(entity.getRole()))")
+    @Mapping(target = "mandorId", source = "mandorId")
     User toDomain(UserJpaEntity entity);
 
     // Domain -> JPA Entity

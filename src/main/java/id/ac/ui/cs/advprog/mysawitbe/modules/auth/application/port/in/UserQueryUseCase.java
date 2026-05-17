@@ -28,4 +28,6 @@ public interface UserQueryUseCase {
     List<UserDTO> listUsers(String roleFilter);
 
     List<UserDTO> listUsers(String roleFilter, String search);
+
+    UUID getAnyAdminId();
 }

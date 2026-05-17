@@ -10,6 +10,7 @@ import java.util.UUID;
 public record PanenApprovedEvent(
         UUID panenId,
         UUID buruhId,
+        UUID mandorId,
         UUID kebunId,
         int weight,
         LocalDateTime timestamp

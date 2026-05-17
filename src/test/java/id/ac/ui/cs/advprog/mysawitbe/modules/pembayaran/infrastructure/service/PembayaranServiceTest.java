@@ -249,7 +249,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 10000), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
     }
 
     @Test
@@ -275,7 +275,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 10000), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
     }
 
     @Test
@@ -776,7 +776,7 @@ class PembayaranServiceTest {
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                referenceId, userId, UUID.randomUUID(), 100000, LocalDateTime.now()
+                referenceId, userId, null, UUID.randomUUID(), 100000, LocalDateTime.now()
         ));
 
         ArgumentCaptor<PayrollDTO> captor = ArgumentCaptor.forClass(PayrollDTO.class);
@@ -792,7 +792,7 @@ class PembayaranServiceTest {
         when(payrollRepository.getWageRate("BURUH")).thenReturn(Integer.MAX_VALUE);
 
         assertThatThrownBy(() -> service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                referenceId, userId, UUID.randomUUID(), 100000, LocalDateTime.now()
+                referenceId, userId, UUID.randomUUID(), UUID.randomUUID(), 100000, LocalDateTime.now()
         ))).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Payroll amount exceeds maximum supported value");
     }
@@ -809,7 +809,7 @@ class PembayaranServiceTest {
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                panenId, buruhId, mandorId, 50000, LocalDateTime.now()
+                panenId, buruhId, null, UUID.randomUUID(), 50000, LocalDateTime.now()
         ));
 
         ArgumentCaptor<PayrollDTO> captor = ArgumentCaptor.forClass(PayrollDTO.class);
@@ -833,10 +833,10 @@ class PembayaranServiceTest {
     @Test
     void onPanenApproved_ignoresNonPositiveWeight() {
         service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 0, LocalDateTime.now()
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 0, LocalDateTime.now()
         ));
         service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), -100, LocalDateTime.now()
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), -100, LocalDateTime.now()
         ));
         verifyNoInteractions(payrollRepository);
     }
@@ -1180,7 +1180,7 @@ class PembayaranServiceTest {
         when(payrollRepository.getWageRate("BURUH")).thenReturn(Integer.MAX_VALUE);
 
         assertThatThrownBy(() -> service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                referenceId, userId, UUID.randomUUID(), 100000, LocalDateTime.now()
+                referenceId, userId, UUID.randomUUID(), UUID.randomUUID(), 100000, LocalDateTime.now()
         ))).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Payroll amount exceeds maximum supported value");
     }
@@ -1194,7 +1194,7 @@ class PembayaranServiceTest {
         when(payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(userId, "BURUH", referenceId, "PANEN")).thenReturn(true);
 
         service.onPanenApproved(new id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent(
-                referenceId, userId, UUID.randomUUID(), 50000, LocalDateTime.now()
+                referenceId, userId, null, UUID.randomUUID(), 50000, LocalDateTime.now()
         ));
 
         verify(payrollRepository, never()).getWageRate(any());

@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PaymentCallbackDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.TopUpResponseDTO;
@@ -59,6 +60,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final PayrollRepositoryPort payrollRepository;
 	private final WalletRepositoryPort walletRepository;
 	private final PanenQueryUseCase panenQueryUseCase;
+	private final UserQueryUseCase userQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
 	private final MidtransProperties midtransProperties;
 	private final ApplicationEventPublisher eventPublisher;
@@ -157,6 +159,19 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				REFERENCE_PANEN,
 				event.weight()
 		);
+		if (event.mandorId() != null) {
+			PayrollDTO mandorPayroll = createPendingPayroll(
+					event.mandorId(),
+					ROLE_MANDOR,
+					event.panenId(),
+					REFERENCE_PANEN,
+					event.weight()
+			);
+			if (mandorPayroll != null) {
+				UUID adminId = userQueryUseCase.getAnyAdminId();
+				autoApprovePayroll(mandorPayroll, adminId);
+			}
+		}
 	}
 
 	@Override
@@ -283,11 +298,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				if (parts.length == 3) {
 					UUID adminId = UUID.fromString(parts[1]);
 					int amountRupiah = (int) Double.parseDouble(verifiedPayload.grossAmount());
-					int internalDollars = amountRupiah / 10000;
-					
-					// Avoid double crediting by checking if this reference already exists
-					// We can wrap this creditTopUp to be idempotent or just call it directly if the walletRepository handles it
-					walletRepository.creditTopUp(adminId, internalDollars, verifiedPayload.orderId());
+					int internalCents = amountRupiah / 100;
+					walletRepository.creditTopUp(adminId, internalCents, verifiedPayload.orderId());
 				}
 			}
 		}
@@ -333,18 +345,18 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		return walletRepository.findTransactionsByUserId(userId);
 	}
 
-	private void createPendingPayroll(UUID userId, String role, UUID referenceId, String referenceType, int weight) {
+	private PayrollDTO createPendingPayroll(UUID userId, String role, UUID referenceId, String referenceType, int weight) {
 		if (payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
 				userId,
 				role,
 				referenceId,
 				referenceType
 		)) {
-			return;
+			return null;
 		}
 
 		int wageRate = payrollRepository.getWageRate(role);
-		int netAmount = multiplySafe(weight, wageRate);
+		int netAmount = computeWageFromGrams(weight, wageRate);
 
 		PayrollDTO pending = new PayrollDTO(
 				null,
@@ -360,7 +372,28 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				null,
 				LocalDateTime.now()
 		);
-		payrollRepository.save(pending);
+		return payrollRepository.save(pending);
+	}
+
+	private void autoApprovePayroll(PayrollDTO payroll, UUID adminId) {
+		walletRepository.debit(adminId, payroll.netAmount(), payroll.payrollId());
+		PayrollDTO approved = new PayrollDTO(
+				payroll.payrollId(),
+				payroll.userId(),
+				payroll.role(),
+				payroll.referenceId(),
+				payroll.referenceType(),
+				payroll.weight(),
+				payroll.wageRateApplied(),
+				payroll.netAmount(),
+				STATUS_APPROVED,
+				null,
+				LocalDateTime.now(),
+				payroll.createdAt()
+		);
+		PayrollDTO saved = payrollRepository.save(approved);
+		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
+		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
 	}
 
 	private PayrollDTO requirePayroll(UUID payrollId) {
@@ -399,6 +432,14 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 			throw new IllegalArgumentException("Invalid payroll status: " + status);
 		}
 		return normalized;
+	}
+
+	private int computeWageFromGrams(int weight, int wageRate) {
+		long result = (long) weight * wageRate;
+		if (result > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Payroll amount exceeds maximum supported value");
+		}
+		return (int) result;
 	}
 
 	private int multiplySafe(int left, int right) {

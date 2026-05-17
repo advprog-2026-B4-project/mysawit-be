@@ -52,6 +52,15 @@ public class PengirimanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(result));
     }
 
+    @GetMapping("/{pengirimanId}")
+    @PreAuthorize("hasAnyRole('MANDOR', 'SUPIR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<PengirimanDTO>> getPengirimanById(
+            @PathVariable UUID pengirimanId
+    ) {
+        PengirimanDTO result = queryUseCase.getPengirimanById(pengirimanId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
     @GetMapping("/supir")
     @PreAuthorize("hasRole('SUPIR')")
     public ResponseEntity<ApiResponse<List<PengirimanDTO>>> listDeliveriesBySupir(

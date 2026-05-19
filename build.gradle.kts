@@ -52,7 +52,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
 
     // Retry (optimistic locking retries on wallet operations)
-    implementation("org.springframework.retry:spring-retry")
+    implementation("org.springframework.retry:spring-retry:2.0.12")
 
     // Structured JSON logging
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")

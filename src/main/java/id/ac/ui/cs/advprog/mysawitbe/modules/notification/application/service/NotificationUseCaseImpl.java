@@ -14,8 +14,8 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.event.Payrol
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,8 +58,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         return repository.findByUserId(userId);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onBuruhAssigned(BuruhAssignedEvent event) {
         String title = "Tugas Baru: Anda Ditugaskan ke Mandor";
@@ -67,8 +66,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.buruhId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onMandorAssignedToKebun(MandorAssignedToKebunEvent event) {
         String title = "Penugasan Kebun Baru";
@@ -76,8 +74,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.mandorId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPanenApproved(PanenApprovedEvent event) {
         String title = "Panen Disetujui";
@@ -86,8 +83,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.buruhId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPanenRejected(PanenRejectedEvent event) {
         String title = "Panen Ditolak";
@@ -96,8 +92,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.buruhId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event) {
         String title = "Pengiriman Disetujui Mandor";
@@ -106,8 +101,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.supirId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPengirimanStatusTiba(PengirimanStatusTibaEvent event) {
         String title = "Truk Tiba";
@@ -116,8 +110,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.mandorId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event) {
         String title = "Pengiriman Diproses Admin";
@@ -126,8 +119,7 @@ public class NotificationUseCaseImpl implements NotificationUseCase {
         sendNotification(event.mandorId(), title, description);
     }
 
-    @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Override
     public void onPayrollProcessed(PayrollProcessedEvent event) {
         String title = "Payroll " + event.status();

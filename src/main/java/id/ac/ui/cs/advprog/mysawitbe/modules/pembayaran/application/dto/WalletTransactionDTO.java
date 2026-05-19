@@ -12,7 +12,7 @@ public record WalletTransactionDTO(
         UUID transactionId,
         UUID userId,
         UUID payrollId,
-        int amount,
+        long amount,
         String type,
         String reference,
         LocalDateTime createdAt

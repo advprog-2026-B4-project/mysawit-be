@@ -1,8 +1,11 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +14,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
 import jakarta.persistence.EntityNotFoundException;
@@ -34,6 +38,13 @@ public class PanenQueryImpl implements PanenQueryUseCase {
     }
 
     @Override
+    public Map<UUID, PanenDTO> getPanenByIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+        return repositoryPort.findAllByIds(ids).stream()
+                .collect(Collectors.toMap(PanenDTO::panenId, p -> p));
+    }
+
+    @Override
     public List<PanenDTO> getApprovedPanenByKebun(UUID kebunId) {
         return repositoryPort.findByKebunIdAndStatus(kebunId, "APPROVED");
     }
@@ -52,24 +63,18 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                 .toList();
     }
 
-    @Override 
+    @Override
     public List<PanenDTO> listPanenByMandor(UUID mandorId, String buruhName, LocalDate date) {
-        // 1. Tanya modul Kebun: "Mandor ini pegang kebun mana?"
         UUID kebunId = kebunQueryUseCase.findKebunIdByMandorId(mandorId);
         if (kebunId == null) {
-            return List.of(); // Jika tidak punya kebun, berarti tidak ada panen
+            return List.of();
         }
 
-        // 2. Ambil data panen murni dari Database berdasarkan Kebun & Tanggal
         List<PanenDTO> panenList = repositoryPort.findByKebunIdAndDate(kebunId, date);
 
-        // 3. Mapping nama buruh dari modul Auth dan Filter berdasarkan pencarian nama
         return panenList.stream()
                 .map(panen -> {
-                    // Minta nama buruh yang asli ke modul Auth
                     String namaAsli = userQueryUseCase.getUserById(panen.buruhId()).name();
-                    
-                    // Re-create DTO karena record di Java bersifat Immutable (SOLID: Functional behavior)
                     return new PanenDTO(
                             panen.panenId(), panen.buruhId(), namaAsli,
                             panen.kebunId(), panen.description(), panen.weight(),
@@ -78,7 +83,6 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                     );
                 })
                 .filter(panen -> {
-                    // Filter berdasarkan substring nama (jika ada input searchNama)
                     if (buruhName == null || buruhName.isBlank()) return true;
                     return panen.buruhName().toLowerCase().contains(buruhName.trim().toLowerCase());
                 })
@@ -89,7 +93,7 @@ public class PanenQueryImpl implements PanenQueryUseCase {
     public boolean hasPanenToday(UUID buruhId, LocalDate date) {
         if (buruhId == null) throw new IllegalArgumentException("buruhId wajib diisi");
         if (date == null) throw new IllegalArgumentException("date wajib diisi");
-        
+
         UUID mandorId = userQueryUseCase.getMandorIdByBuruhId(buruhId);
         if (mandorId == null) {
             throw new IllegalStateException("Buruh belum memiliki Mandor!");
@@ -100,7 +104,6 @@ public class PanenQueryImpl implements PanenQueryUseCase {
             throw new IllegalStateException("Mandor belum di-assign ke kebun manapun!");
         }
 
-        // Memanggil Port Out untuk bertanya ke database
         return repositoryPort.existsByBuruhIdAndDate(buruhId, date);
     }
 
@@ -118,7 +121,7 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                     "Buruh dengan ID " + buruhId + " tidak ditemukan.");
         }
         boolean isOwnData = requesterId.equals(buruhId);
-        
+
         boolean isMandorSupervise = false;
         try {
             UserDTO requester = userQueryUseCase.getUserById(requesterId);
@@ -126,9 +129,8 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                 List<UserDTO> buruhByMandor = userQueryUseCase.getBuruhByMandorId(requesterId);
                 isMandorSupervise = buruhByMandor.stream()
                         .anyMatch(b -> b.userId().equals(buruhId));
-            }
-            else if ("ADMIN".equals(requester.role())) {
-                isMandorSupervise = true; // Admin boleh lihat semua data
+            } else if ("ADMIN".equals(requester.role())) {
+                isMandorSupervise = true;
             }
         } catch (Exception e) {
             isMandorSupervise = false;
@@ -139,25 +141,21 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                     "Anda tidak memiliki akses untuk melihat data panen buruh ID " + buruhId);
         }
 
-        // ─── Step 3: Query panen ───────────────────────────────────
         return listPanenByBuruh(buruhId, startDate, endDate, status);
     }
 
     @Override
-    public List<PanenDTO> listPanenForAdmin(String buruhName, LocalDate startDate, LocalDate endDate, String status) {
-        
-        // 1. Ambil data dari DB berdasarkan tanggal dan status saja (HAPUS parameter buruhName di sini)
-        List<PanenDTO> allPanen = repositoryPort.findAllWithFilters(status, startDate, endDate);
+    public PanenPageDTO listPanenForAdmin(String buruhName, LocalDate startDate, LocalDate endDate, String status, int page, int size) {
+        PanenPageDTO panenPage = repositoryPort.findAllWithFiltersPaginated(status, startDate, endDate, page, size);
 
-        // 2. Mapping nama buruh dari Auth dan filter secara manual dengan stream
-        return allPanen.stream()
+        List<PanenDTO> enriched = panenPage.items().stream()
                 .map(panen -> {
                     String namaAsli = userQueryUseCase.getUserById(panen.buruhId()).name();
                     return new PanenDTO(
                             panen.panenId(), panen.buruhId(), namaAsli,
                             panen.kebunId(), panen.description(), panen.weight(),
-                            panen.status(), panen.rejectionReason(), 
-                            panen.photos(), 
+                            panen.status(), panen.rejectionReason(),
+                            panen.photos(),
                             panen.timestamp()
                     );
                 })
@@ -166,5 +164,9 @@ public class PanenQueryImpl implements PanenQueryUseCase {
                     return panen.buruhName().toLowerCase().contains(buruhName.trim().toLowerCase());
                 })
                 .toList();
+
+        return new PanenPageDTO(enriched, panenPage.page(), panenPage.size(),
+                panenPage.totalElements(), panenPage.totalPages(),
+                panenPage.hasNext(), panenPage.hasPrevious());
     }
 }

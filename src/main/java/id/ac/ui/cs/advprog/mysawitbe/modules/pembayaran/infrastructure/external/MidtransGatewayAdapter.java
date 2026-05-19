@@ -8,11 +8,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 
@@ -26,7 +29,12 @@ public class MidtransGatewayAdapter implements PaymentGatewayPort {
 
     @PostConstruct
     public void init() {
-        this.restClient = RestClient.create();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(props.connectTimeoutMs()))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofMillis(props.readTimeoutMs()));
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override

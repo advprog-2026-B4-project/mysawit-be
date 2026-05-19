@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -50,6 +51,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.CONFLICT)
             .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(ApiResponse.error("Wallet was modified concurrently. Please retry the operation."));
+    }
+
+    @ExceptionHandler({ArithmeticException.class, NumberFormatException.class})
+    public ResponseEntity<ApiResponse<Void>> handleAmountParseError(RuntimeException ex) {
+        return ResponseEntity
+            .status(422)
+            .body(ApiResponse.error("Invalid payment amount: " + ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

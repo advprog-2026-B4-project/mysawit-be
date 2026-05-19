@@ -51,6 +51,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-cache")
 
+    // Retry (optimistic locking retries on wallet operations)
+    implementation("org.springframework.retry:spring-retry")
+
+    // Structured JSON logging
+    implementation("net.logstash.logback:logstash-logback-encoder:8.0")
+
+    // Rate limiting (local in-memory; single-instance monolith doesn't need distributed state)
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.6.3")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")

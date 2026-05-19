@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +30,12 @@ public class WalletEntity {
 	private UUID userId;
 
 	@Column(name = "balance", nullable = false)
-	private int balance;
+	private long balance;
+
+	@Version
+	@Column(name = "version", nullable = false)
+	@Builder.Default
+	private Long version = 0L;
 
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;

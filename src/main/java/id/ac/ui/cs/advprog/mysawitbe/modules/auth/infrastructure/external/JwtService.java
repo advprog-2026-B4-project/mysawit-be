@@ -24,8 +24,23 @@ public class JwtService {
     public JwtService(
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expiration-ms}") long expirationMs) {
+        validateSecret(secret);
         this.key          = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
+    }
+
+    private static void validateSecret(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET must not be empty.");
+        }
+        if ("change-me-in-production-min-256-bits".equals(secret)) {
+            throw new IllegalStateException(
+                    "JWT_SECRET is still the default placeholder. " +
+                    "Set the JWT_SECRET environment variable to a cryptographically random value of at least 32 bytes.");
+        }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET is too short — must be at least 32 bytes (256 bits).");
+        }
     }
 
     public String generateToken(String userId, String role) {

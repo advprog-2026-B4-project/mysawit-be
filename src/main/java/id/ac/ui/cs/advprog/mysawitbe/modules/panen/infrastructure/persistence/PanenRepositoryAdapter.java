@@ -1,13 +1,16 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.infrastructure.persistence;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +33,7 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
 
     @Override
     public PanenDTO findById(UUID id) {
-        // Mengembalikan null sesuai aturan "API Conventions" di README/agent.md 
+        // Mengembalikan null sesuai aturan "API Conventions" di README/agent.md
         // agar Use Case yang melempar EntityNotFoundException, bukan layer ini.
         return jpaRepository.findByIdWithPhotos(id)
                 .map(mapper::entityToDto)
@@ -67,12 +70,44 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
 
     @Override
     public List<PanenDTO> findAllWithFilters(String status, LocalDate startDate, LocalDate endDate) {
-        // Konversi String ke Enum agar JPA tidak error
         PanenStatus panenStatus = (status != null && !status.isBlank()) ? PanenStatus.valueOf(status.toUpperCase()) : null;
-        
         return jpaRepository.findAllWithFilters(panenStatus, startDate, endDate)
                 .stream()
                 .map(mapper::entityToDto)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    @Override
+    public List<PanenDTO> findAllByIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return jpaRepository.findAllByIdsWithPhotos(ids).stream()
+                .map(mapper::entityToDto)
+                .toList();
+    }
+
+    @Override
+    public PanenPageDTO findAllWithFiltersPaginated(String status, LocalDate startDate, LocalDate endDate, int page, int size) {
+        PanenStatus panenStatus = (status != null && !status.isBlank()) ? PanenStatus.valueOf(status.toUpperCase()) : null;
+
+        // Query 1: fetch IDs with pagination (avoids HHH90003004 from LEFT JOIN FETCH + Pageable)
+        Page<UUID> idPage = jpaRepository.findAllIdsByFilters(panenStatus, startDate, endDate, PageRequest.of(page, size));
+        if (idPage.isEmpty()) {
+            return new PanenPageDTO(List.of(), page, size, 0L, 0, false, false);
+        }
+
+        // Query 2: fetch full entities (with photos) for the IDs on this page
+        List<PanenDTO> dtos = jpaRepository.findAllByIdsWithPhotos(idPage.getContent()).stream()
+                .map(mapper::entityToDto)
+                .toList();
+
+        return new PanenPageDTO(
+                dtos,
+                page,
+                size,
+                idPage.getTotalElements(),
+                idPage.getTotalPages(),
+                idPage.hasNext(),
+                idPage.hasPrevious()
+        );
     }
 }

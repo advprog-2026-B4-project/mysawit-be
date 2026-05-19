@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.CreatePanenRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.ReviewPanenRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
@@ -37,15 +38,17 @@ public class PanenController {
 
     @GetMapping("/admin/list")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<PanenDTO>>> listPanenForAdmin(
+    public ResponseEntity<ApiResponse<PanenPageDTO>> listPanenForAdmin(
             @RequestParam(required = false) String buruhName,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         try {
-            List<PanenDTO> result = queryUseCase.listPanenForAdmin(
-                    buruhName, startDate, endDate, status);
+            PanenPageDTO result = queryUseCase.listPanenForAdmin(
+                    buruhName, startDate, endDate, status, page, size);
             return ResponseEntity.ok(
                     ApiResponse.success("Daftar semua laporan panen", result));
 

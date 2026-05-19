@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Assignme
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.ProcessDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.RejectDeliveryRequestDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.UpdateDeliveryStatusRequestDTO;
@@ -158,11 +159,13 @@ public class PengirimanController {
 
     @GetMapping("/admin/approved")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<PengirimanDTO>>> listApprovedDeliveriesForAdmin(
+    public ResponseEntity<ApiResponse<PengirimanPageDTO>> listApprovedDeliveriesForAdmin(
             @RequestParam(required = false) String mandorName,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        List<PengirimanDTO> result = queryUseCase.listApprovedDeliveriesForAdmin(mandorName, date);
+        PengirimanPageDTO result = queryUseCase.listApprovedDeliveriesForAdmin(mandorName, date, page, size);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

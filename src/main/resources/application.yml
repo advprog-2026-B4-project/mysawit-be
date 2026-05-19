@@ -10,6 +10,10 @@ app:
     snap-base-url: ${MIDTRANS_SNAP_BASE_URL:https://app.sandbox.midtrans.com/snap/v1}
     notification-url: ${MIDTRANS_NOTIFICATION_URL:http://localhost:8080/api/pembayaran/wallet/midtrans-callback}
     redirect-url: ${APP_FRONTEND_URL:http://localhost:3000}/admin/pembayaran/topup/status
+    connect-timeout-ms: ${MIDTRANS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MIDTRANS_READ_TIMEOUT_MS:10000}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
   name: MySawit
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}

@@ -1,12 +1,15 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.adapter;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaEntity;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaRepository;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.mapper.PengirimanMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -122,6 +125,35 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
             );
         }
         return mapper.toDtoList(entities);
+    }
+
+    @Override
+    public PengirimanPageDTO findApprovedByMandorForAdminPaginated(LocalDate date, int page, int size) {
+        String status = PengirimanStatus.APPROVED_MANDOR.name();
+        PageRequest pageable = PageRequest.of(page, size);
+
+        Page<PengirimanJpaEntity> entityPage;
+        if (date == null) {
+            entityPage = jpaRepository.findByStatusOrderByTimestampDesc(status, pageable);
+        } else {
+            entityPage = jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
+                    status,
+                    date.atStartOfDay(),
+                    toEndOfDay(date),
+                    pageable
+            );
+        }
+
+        List<PengirimanDTO> dtos = mapper.toDtoList(entityPage.getContent());
+        return new PengirimanPageDTO(
+                dtos,
+                page,
+                size,
+                entityPage.getTotalElements(),
+                entityPage.getTotalPages(),
+                entityPage.hasNext(),
+                entityPage.hasPrevious()
+        );
     }
 
     private LocalDateTime toEndOfDay(LocalDate date) {

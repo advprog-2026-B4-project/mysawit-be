@@ -46,12 +46,10 @@ class HexagonalArchitectureTest {
                     .because("Module infrastructure layers must not depend on each other — use application-layer events or ports");
 
     // Negative rule: @Service beans must not live in infrastructure.service.
-    // PembayaranService and VariabelPokokService are known violators pending T1-7.
     @ArchTest
     static final ArchRule services_must_not_reside_in_infrastructure_service = noClasses()
             .that().areAnnotatedWith(org.springframework.stereotype.Service.class)
-            .and().doNotHaveSimpleName("PembayaranService")    // TODO T1-7: move to application/service
-            .and().doNotHaveSimpleName("VariabelPokokService") // TODO T1-7: move to application/service
+            .and().doNotHaveSimpleName("VariabelPokokService") // TODO: move to application/service
             .should().resideInAPackage("..infrastructure.service..")
             .because("@Service beans must not be placed in the infrastructure layer's service sub-package");
 }

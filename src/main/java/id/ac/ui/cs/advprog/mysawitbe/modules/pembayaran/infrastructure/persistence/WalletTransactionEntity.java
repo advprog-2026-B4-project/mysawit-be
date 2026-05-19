@@ -40,7 +40,7 @@ public class WalletTransactionEntity {
 	private String reference;
 
 	@Column(name = "amount", nullable = false)
-	private int amount;
+	private long amount;
 
 	@Column(name = "type", nullable = false, length = 32)
 	private String type;

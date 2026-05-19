@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
 
-import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO.PhotoDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
@@ -23,6 +23,8 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.Pengir
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -62,7 +64,6 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final PanenQueryUseCase panenQueryUseCase;
 	private final UserQueryUseCase userQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
-	private final MidtransProperties midtransProperties;
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Override
@@ -116,7 +117,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 			}
 
 			List<String> urls = panen.photos().stream()
-					.map(photo -> photo.url())
+					.map(PhotoDTO::url)
 					.filter(url -> url != null && !url.isBlank())
 					.distinct()
 					.toList();
@@ -214,6 +215,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 	@Override
 	@Transactional
+	@CacheEvict(value = {"wallet-balance", "wallet-tx"}, allEntries = true)
 	public PayrollDTO approvePayroll(UUID payrollId, UUID adminId) {
 		requireAdminId(adminId);
 		PayrollDTO current = requirePayroll(payrollId);
@@ -336,11 +338,13 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
+	@Cacheable(value = "wallet-balance", key = "#userId")
 	public WalletBalanceDTO getUserWalletBalance(UUID userId) {
 		return walletRepository.findBalanceByUserId(userId);
 	}
 
 	@Override
+	@Cacheable(value = "wallet-tx", key = "#userId")
 	public List<WalletTransactionDTO> getWalletTransactions(UUID userId) {
 		return walletRepository.findTransactionsByUserId(userId);
 	}
@@ -443,11 +447,4 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		return (int) result;
 	}
 
-	private int multiplySafe(int left, int right) {
-		long result = (long) left * right;
-		if (result > Integer.MAX_VALUE) {
-			throw new IllegalArgumentException("Payroll amount exceeds maximum supported value");
-		}
-		return (int) result;
-	}
 }

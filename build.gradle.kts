@@ -47,8 +47,9 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
-    // Redis
+    // Redis + Cache
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
 
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.6.3")
@@ -61,6 +62,10 @@ dependencies {
 
     // WebFlux (reactive HTTP client for OAuth2 token exchange)
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    // Actuator + Metrics
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -75,6 +80,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")

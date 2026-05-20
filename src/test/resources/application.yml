@@ -1,6 +1,0 @@
-app:
-  jwt:
-    secret: "test-secret-value-at-least-32-bytes-long-for-tests!"
-    expiration-ms: 86400000
-  rate-limit:
-    enabled: false

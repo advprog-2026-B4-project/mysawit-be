@@ -599,7 +599,7 @@ class KebunUseCaseServiceTest {
 
         service.assignMandorToKebun(mandorId, kebunId);
 
-        verify(eventPublisher).publishEvent(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
+        verify(eventPublisher).publish(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
     }
 
     @Test
@@ -612,7 +612,7 @@ class KebunUseCaseServiceTest {
 
         service.moveMandorToKebun(mandorId, kebunId);
 
-        verify(eventPublisher).publishEvent(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
+        verify(eventPublisher).publish(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
     }
 
     @Test

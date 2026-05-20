@@ -205,7 +205,7 @@ class PanenCommandImplTest {
             assertThrows(EntityNotFoundException.class,
                     () -> panenCommandImpl.approvePanen(panenId, mandorId));
 
-            verify(eventPublisher, never()).publishEvent(any());
+            verify(eventPublisher, never()).publish(any());
         }
 
         @Test
@@ -240,7 +240,7 @@ class PanenCommandImplTest {
 
             ArgumentCaptor<PanenApprovedEvent> eventCaptor =
                     ArgumentCaptor.forClass(PanenApprovedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            verify(eventPublisher).publish(eventCaptor.capture());
 
             PanenApprovedEvent event = eventCaptor.getValue();
             assertEquals(panenId, event.panenId());
@@ -272,7 +272,7 @@ class PanenCommandImplTest {
             assertThrows(EntityNotFoundException.class,
                     () -> panenCommandImpl.rejectPanen(panenId, mandorId, "alasan"));
 
-            verify(eventPublisher, never()).publishEvent(any());
+            verify(eventPublisher, never()).publish(any());
         }
 
         @Test
@@ -310,7 +310,7 @@ class PanenCommandImplTest {
 
             ArgumentCaptor<PanenRejectedEvent> eventCaptor =
                     ArgumentCaptor.forClass(PanenRejectedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            verify(eventPublisher).publish(eventCaptor.capture());
 
             PanenRejectedEvent event = eventCaptor.getValue();
             assertEquals(panenId, event.panenId());

@@ -29,6 +29,7 @@ import org.springframework.cache.annotation.Cacheable;
 import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.event.TransactionPhase;
@@ -156,7 +157,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	@Override
 	@Async("eventTaskExecutor")
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPanenApproved(PanenApprovedEvent event) {
 		if (event == null || event.weight() <= 0) {
 			return;
@@ -186,7 +187,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	@Override
 	@Async("eventTaskExecutor")
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event) {
 		if (event == null || event.totalWeight() <= 0) {
 			return;
@@ -203,7 +204,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	@Override
 	@Async("eventTaskExecutor")
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-	@Transactional
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event) {
 		if (event == null || event.acceptedWeight() <= 0) {
 			return;

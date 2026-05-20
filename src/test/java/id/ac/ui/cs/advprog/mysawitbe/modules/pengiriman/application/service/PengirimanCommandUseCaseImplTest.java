@@ -96,7 +96,7 @@ class PengirimanCommandUseCaseImplTest {
         assertThat(result.status()).isEqualTo(PengirimanStatus.ASSIGNED.name());
         assertThat(result.totalWeight()).isEqualTo(300000);
         assertThat(result.panenIds()).containsExactly(panenA, panenB);
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publish(any());
     }
 
     @Test
@@ -143,7 +143,7 @@ class PengirimanCommandUseCaseImplTest {
 
         assertThat(result.status()).isEqualTo(PengirimanStatus.TIBA.name());
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue()).isInstanceOf(PengirimanStatusTibaEvent.class);
     }
 
@@ -171,7 +171,7 @@ class PengirimanCommandUseCaseImplTest {
 
         assertThat(result.status()).isEqualTo(PengirimanStatus.APPROVED_MANDOR.name());
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue()).isInstanceOf(PengirimanApprovedByMandorEvent.class);
     }
 
@@ -216,7 +216,7 @@ class PengirimanCommandUseCaseImplTest {
         assertThat(result.statusReason()).isEqualTo("Sebagian sawit rusak");
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue())
                 .isInstanceOfSatisfying(PengirimanProcessedByAdminEvent.class, event ->
                         assertThat(event.status()).isEqualTo("PARTIAL"));
@@ -338,7 +338,7 @@ class PengirimanCommandUseCaseImplTest {
         PengirimanDTO result = service.updateDeliveryStatus(pengirimanId, supirId, PengirimanStatus.IN_TRANSIT);
 
         assertThat(result.status()).isEqualTo(PengirimanStatus.IN_TRANSIT.name());
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publish(any());
     }
 
     @Test
@@ -514,7 +514,7 @@ class PengirimanCommandUseCaseImplTest {
 
         assertThat(result.status()).isEqualTo(PengirimanStatus.APPROVED_ADMIN.name());
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue())
                 .isInstanceOfSatisfying(PengirimanProcessedByAdminEvent.class, event ->
                         assertThat(event.status()).isEqualTo("APPROVED"));
@@ -582,7 +582,7 @@ class PengirimanCommandUseCaseImplTest {
         assertThat(result.status()).isEqualTo(PengirimanStatus.REJECTED_ADMIN.name());
         assertThat(result.statusReason()).isEqualTo("Rusak");
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue())
                 .isInstanceOfSatisfying(PengirimanProcessedByAdminEvent.class, event ->
                         assertThat(event.status()).isEqualTo("REJECTED"));

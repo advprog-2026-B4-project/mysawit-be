@@ -15,6 +15,8 @@ public interface UserQueryUseCase {
 
     String getUserRole(UUID userId);
 
+    UUID getMandorIdByBuruhId(UUID buruhId);
+
     boolean verifyUserExists(UUID userId);
 
     List<UserDTO> getBuruhByMandorId(UUID mandorId);
@@ -26,4 +28,6 @@ public interface UserQueryUseCase {
     List<UserDTO> listUsers(String roleFilter);
 
     List<UserDTO> listUsers(String roleFilter, String search);
+
+    UUID getAnyAdminId();
 }

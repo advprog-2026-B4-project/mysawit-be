@@ -47,6 +47,7 @@ public interface PanenMapper extends PanenMapperPort {
     // ── Entity → Domain ─────────────────────────────────────────────
 
     @Mapping(target = "timestamp", source = "createdAt")
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "buruhName", ignore = true)
     @Mapping(target = "photos", source = "photos", qualifiedByName = "entityPhotosToDomain")
     Panen toDomain(PanenEntity entity);
@@ -55,6 +56,7 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Override
     @Mapping(target = "status", expression = "java(panen.getStatus().name())")
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "photos", source = "photos", qualifiedByName = "domainPhotosToPhotoDTOs")
     PanenDTO toDTO(Panen panen);
 
@@ -62,8 +64,8 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Override
     @Mapping(target = "status", expression = "java(id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus.valueOf(dto.status()))")
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "photos", source = "photos", qualifiedByName = "photoDTOsToDomain")
-    @Mapping(target = "rejectionReason", ignore = true)
     @Mapping(target = "timestamp", source = "timestamp")
     Panen dtoToDomain(PanenDTO dto);
 
@@ -71,6 +73,7 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "timestamp", source = "createdAt")
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "buruhName", ignore = true)
     @Mapping(target = "photos", source = "photos", qualifiedByName = "entityPhotosToPhotoDTOs")
     PanenDTO entityToDto(PanenEntity entity);

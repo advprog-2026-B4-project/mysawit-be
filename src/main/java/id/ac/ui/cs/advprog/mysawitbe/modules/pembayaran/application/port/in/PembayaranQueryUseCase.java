@@ -1,11 +1,11 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.PayrollStatusDTO;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,11 +26,11 @@ public interface PembayaranQueryUseCase {
      * A user may only query their own payrolls; ADMIN may query any.
      */
     @PreAuthorize("hasRole('ADMIN') or #userId.toString() == authentication.name")
-    List<PayrollDTO> getPayrollsByUserId(UUID userId, LocalDate startDate, LocalDate endDate, String status);
+    PayrollPageDTO getPayrollsByUserId(UUID userId, LocalDate startDate, LocalDate endDate, String status, int page, int size);
 
     /**
      * Admin view: returns ALL payrolls across all users, filterable by date and status.
      */
     @PreAuthorize("hasRole('ADMIN')")
-    List<PayrollDTO> listAllPayrolls(LocalDate startDate, LocalDate endDate, String status);
+    PayrollPageDTO listAllPayrolls(LocalDate startDate, LocalDate endDate, String status, int page, int size);
 }

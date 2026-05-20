@@ -11,5 +11,11 @@ public record UserDTO(
         String username,
         String name,
         String role,
-        String email
-) {}
+        String email,
+        String mandorCertificationNumber,
+        UUID mandorId
+) {
+        public UserDTO(UUID userId, String username, String name, String role, String email) {
+                this(userId, username, name, role, email, null, null);
+        }
+}

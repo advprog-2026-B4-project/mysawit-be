@@ -1,13 +1,17 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
-import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.KebunDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -15,12 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +34,14 @@ import java.util.UUID;
 public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
 
     private static final String SUPIR_ROLE = "SUPIR";
+    private static final int DEFAULT_MAX_CAPACITY_GRAMS = 400_000;
     private static final String KEBUN_QUERY_UNAVAILABLE_MESSAGE =
             "Kebun query dependency is unavailable. Integrasi modul kebun belum siap.";
 
     private final PengirimanRepositoryPort repository;
     private final ObjectProvider<KebunQueryUseCase> kebunQueryUseCaseProvider;
+    private final PanenQueryUseCase panenQueryUseCase;
+    private final UserQueryUseCase userQueryUseCase;
 
     @Override
     public PengirimanDTO getPengirimanById(UUID pengirimanId) {
@@ -40,13 +49,15 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
         if (result == null) {
             throw new EntityNotFoundException("Pengiriman not found: " + pengirimanId);
         }
-        return result;
+        return enrichUserNames(result);
     }
 
     @Override
     public List<PengirimanDTO> listDeliveriesBySupir(UUID supirId, LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
-        return repository.findBySupirId(supirId, startDate, endDate);
+        return repository.findBySupirId(supirId, startDate, endDate).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
@@ -56,54 +67,95 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
             throw new KebunQueryDependencyUnavailableException(KEBUN_QUERY_UNAVAILABLE_MESSAGE);
         }
 
-        Map<UUID, AssignedSupirDTO> uniqueSupir = new LinkedHashMap<>();
-        List<KebunDTO> kebunList = kebunQueryUseCase.listKebun(null, null);
-        if (kebunList == null) {
+        List<UserDTO> supirList = kebunQueryUseCase.getSupirListByMandorId(mandorId);
+        if (supirList == null) {
             return List.of();
         }
 
-        for (KebunDTO kebun : kebunList) {
-            if (kebun == null || kebun.kebunId() == null) {
-                continue;
-            }
+        return supirList.stream()
+                .filter(this::isValidSupir)
+                .filter(user -> matchesSearchNama(user.name(), searchNama))
+                .map(user -> new AssignedSupirDTO(user.userId(), user.username(), user.name(), user.email()))
+                .collect(Collectors.toList());
+    }
 
-            UUID assignedMandorId = kebunQueryUseCase.getMandorIdByKebun(kebun.kebunId());
-            if (!mandorId.equals(assignedMandorId)) {
-                continue;
-            }
-
-            List<UserDTO> supirList = kebunQueryUseCase.getSupirList(kebun.kebunId());
-            if (supirList == null) {
-                continue;
-            }
-
-            for (UserDTO user : supirList) {
-                if (!isValidSupir(user) || !matchesSearchNama(user.name(), searchNama)) {
-                    continue;
-                }
-                uniqueSupir.putIfAbsent(
-                        user.userId(),
-                        new AssignedSupirDTO(user.userId(), user.username(), user.name(), user.email())
-                );
-            }
+    @Override
+    public List<AssignablePanenDTO> listAssignablePanenForMandor(UUID mandorId) {
+        KebunQueryUseCase kebunQueryUseCase = requireKebunQueryUseCase();
+        UUID kebunId = kebunQueryUseCase.findKebunIdByMandorId(mandorId);
+        if (kebunId == null) {
+            return List.of();
         }
 
-        return List.copyOf(uniqueSupir.values());
+        List<PanenDTO> approvedPanen = panenQueryUseCase.getApprovedPanenByKebun(kebunId);
+        if (approvedPanen == null || approvedPanen.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> panenIds = approvedPanen.stream()
+                .map(PanenDTO::panenId)
+                .filter(Objects::nonNull)
+                .toList();
+        List<UUID> assignedPanenIds = repository.findAssignedPanenIds(panenIds);
+
+        return approvedPanen.stream()
+                .filter(panen -> panen.panenId() != null)
+                .filter(panen -> !assignedPanenIds.contains(panen.panenId()))
+                .map(panen -> new AssignablePanenDTO(
+                        panen.panenId(),
+                        panen.buruhId(),
+                        panen.buruhName(),
+                        panen.description(),
+                        panen.weight(),
+                        panen.timestamp()
+                ))
+                .toList();
+    }
+
+    @Override
+    public AssignmentRecommendationDTO recommendAssignmentForMandor(UUID mandorId, Integer maxCapacity) {
+        int capacity = maxCapacity == null ? DEFAULT_MAX_CAPACITY_GRAMS : maxCapacity;
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Max capacity must be greater than 0");
+        }
+
+        List<AssignablePanenDTO> candidates = listAssignablePanenForMandor(mandorId).stream()
+                .filter(panen -> panen.weight() > 0 && panen.weight() <= capacity)
+                .toList();
+        List<AssignablePanenDTO> selected = solveKnapsack(candidates, capacity);
+        int totalWeight = selected.stream()
+                .mapToInt(AssignablePanenDTO::weight)
+                .sum();
+
+        return new AssignmentRecommendationDTO(
+                selected.stream().map(AssignablePanenDTO::panenId).toList(),
+                selected,
+                totalWeight,
+                capacity,
+                capacity - totalWeight
+        );
     }
 
     @Override
     public List<PengirimanDTO> listActiveDeliveriesByMandor(UUID mandorId) {
-        return repository.findActiveByMandorId(mandorId);
+        return repository.findActiveByMandorId(mandorId).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
     public List<PengirimanDTO> listDeliveriesOfSupirByMandor(UUID mandorId, UUID supirId) {
-        return repository.findByMandorIdAndSupirId(mandorId, supirId);
+        return repository.findByMandorIdAndSupirId(mandorId, supirId).stream()
+                .map(this::enrichUserNames)
+                .toList();
     }
 
     @Override
     public List<PengirimanDTO> listApprovedDeliveriesForAdmin(String mandorName, LocalDate date) {
-        return repository.findApprovedByMandorForAdmin(mandorName, date);
+        return repository.findApprovedByMandorForAdmin(mandorName, date).stream()
+                .map(this::enrichUserNames)
+                .filter(pengiriman -> matchesMandorName(pengiriman.mandorName(), mandorName))
+                .toList();
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
@@ -127,5 +179,90 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
         }
         return supirName.toLowerCase(Locale.ROOT)
                 .contains(searchNama.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private boolean matchesMandorName(String existingName, String searchNama) {
+        if (searchNama == null || searchNama.isBlank()) {
+            return true;
+        }
+        if (existingName == null || existingName.isBlank()) {
+            return false;
+        }
+        return existingName.toLowerCase(Locale.ROOT)
+                .contains(searchNama.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private KebunQueryUseCase requireKebunQueryUseCase() {
+        KebunQueryUseCase kebunQueryUseCase = kebunQueryUseCaseProvider.getIfAvailable();
+        if (kebunQueryUseCase == null) {
+            throw new KebunQueryDependencyUnavailableException(KEBUN_QUERY_UNAVAILABLE_MESSAGE);
+        }
+        return kebunQueryUseCase;
+    }
+
+    private List<AssignablePanenDTO> solveKnapsack(List<AssignablePanenDTO> candidates, int capacity) {
+        boolean[] reachable = new boolean[capacity + 1];
+        int[] previousWeight = new int[capacity + 1];
+        int[] previousItem = new int[capacity + 1];
+        Arrays.fill(previousWeight, -1);
+        Arrays.fill(previousItem, -1);
+        reachable[0] = true;
+
+        for (int itemIndex = 0; itemIndex < candidates.size(); itemIndex++) {
+            int itemWeight = candidates.get(itemIndex).weight();
+            for (int weight = capacity; weight >= itemWeight; weight--) {
+                if (!reachable[weight] && reachable[weight - itemWeight]) {
+                    reachable[weight] = true;
+                    previousWeight[weight] = weight - itemWeight;
+                    previousItem[weight] = itemIndex;
+                }
+            }
+        }
+
+        int bestWeight = capacity;
+        while (bestWeight > 0 && !reachable[bestWeight]) {
+            bestWeight--;
+        }
+
+        List<AssignablePanenDTO> selected = new ArrayList<>();
+        int cursor = bestWeight;
+        while (cursor > 0) {
+            selected.add(candidates.get(previousItem[cursor]));
+            cursor = previousWeight[cursor];
+        }
+        Collections.reverse(selected);
+        return selected;
+    }
+
+    private PengirimanDTO enrichUserNames(PengirimanDTO dto) {
+        String supirName = resolveUserName(dto.supirId(), dto.supirName());
+        String mandorName = resolveUserName(dto.mandorId(), dto.mandorName());
+        return new PengirimanDTO(
+                dto.pengirimanId(),
+                dto.supirId(),
+                supirName,
+                dto.mandorId(),
+                mandorName,
+                dto.status(),
+                dto.totalWeight(),
+                dto.acceptedWeight(),
+                dto.statusReason(),
+                dto.panenIds(),
+                dto.timestamp()
+        );
+    }
+
+    private String resolveUserName(UUID userId, String fallback) {
+        if (fallback != null && !fallback.isBlank()) {
+            return fallback;
+        }
+        if (userId == null) {
+            return null;
+        }
+        try {
+            return userQueryUseCase.getUserById(userId).name();
+        } catch (RuntimeException ex) {
+            return fallback;
+        }
     }
 }

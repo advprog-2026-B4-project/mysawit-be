@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignedSupirDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
 
 import java.time.LocalDate;
@@ -24,6 +26,16 @@ public interface PengirimanQueryUseCase {
      * Mandor views truck drivers assigned in their kebun, with optional name filter.
      */
     List<AssignedSupirDTO> listAssignedSupirForMandor(UUID mandorId, String searchNama);
+
+    /**
+     * Mandor views approved panen that are not yet attached to any delivery.
+     */
+    List<AssignablePanenDTO> listAssignablePanenForMandor(UUID mandorId);
+
+    /**
+     * Mandor gets a knapsack recommendation for panen assignment within truck capacity.
+     */
+    AssignmentRecommendationDTO recommendAssignmentForMandor(UUID mandorId, Integer maxCapacity);
 
     /**
      * Mandor's active deliveries view.

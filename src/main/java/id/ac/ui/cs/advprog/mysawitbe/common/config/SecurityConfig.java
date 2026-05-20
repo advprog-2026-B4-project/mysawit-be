@@ -37,7 +37,9 @@ public class SecurityConfig {
             .oauth2Login(oauth2 -> oauth2.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/auth/login",
-                                               "/api/auth/register").permitAll()
+                                               "/api/auth/register",
+                                               "/api/auth/oauth2/complete-registration",
+                                               "/api/pembayaran/wallet/midtrans-callback").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/auth/oauth2/url",
                                                "/api/auth/oauth2/callback").permitAll()
                 .requestMatchers("/actuator/**").permitAll()

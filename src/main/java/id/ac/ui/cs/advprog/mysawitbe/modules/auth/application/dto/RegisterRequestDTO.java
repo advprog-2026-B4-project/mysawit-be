@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public record RegisterRequestDTO(
     @NotBlank(message = "Email is required")
@@ -17,5 +18,8 @@ public record RegisterRequestDTO(
     String name,
 
     @NotNull(message = "Role is required")
-    UserRole role
+    UserRole role,
+
+    @Size(max = 100, message = "Nomor sertifikasi mandor maksimal 100 karakter")
+    String mandorCertificationNumber
 ) {}

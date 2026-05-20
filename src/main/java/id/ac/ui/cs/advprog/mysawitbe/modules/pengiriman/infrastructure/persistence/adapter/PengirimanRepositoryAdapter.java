@@ -29,8 +29,30 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
 
     @Override
     public PengirimanDTO save(PengirimanDTO pengirimanDTO) {
+        if (pengirimanDTO.pengirimanId() != null) {
+            return jpaRepository.findById(pengirimanDTO.pengirimanId())
+                    .map(existing -> updateExisting(existing, pengirimanDTO))
+                    .map(jpaRepository::save)
+                    .map(mapper::toDto)
+                    .orElseGet(() -> saveNew(pengirimanDTO));
+        }
+        return saveNew(pengirimanDTO);
+    }
+
+    private PengirimanDTO saveNew(PengirimanDTO pengirimanDTO) {
         PengirimanJpaEntity entity = mapper.toEntity(pengirimanDTO);
         return mapper.toDto(jpaRepository.save(entity));
+    }
+
+    private PengirimanJpaEntity updateExisting(PengirimanJpaEntity existing, PengirimanDTO pengirimanDTO) {
+        existing.setSupirId(pengirimanDTO.supirId());
+        existing.setMandorId(pengirimanDTO.mandorId());
+        existing.setStatus(pengirimanDTO.status());
+        existing.setTotalWeight(pengirimanDTO.totalWeight());
+        existing.setAcceptedWeight(pengirimanDTO.acceptedWeight());
+        existing.setStatusReason(pengirimanDTO.statusReason());
+        existing.setTimestamp(pengirimanDTO.timestamp());
+        return existing;
     }
 
     @Override
@@ -38,6 +60,14 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
         return jpaRepository.findById(pengirimanId)
                 .map(mapper::toDto)
                 .orElse(null);
+    }
+
+    @Override
+    public List<UUID> findAssignedPanenIds(List<UUID> panenIds) {
+        if (panenIds == null || panenIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findAssignedPanenIds(panenIds);
     }
 
     @Override
@@ -83,10 +113,10 @@ public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
     public List<PengirimanDTO> findApprovedByMandorForAdmin(String mandorName, LocalDate date) {
         List<PengirimanJpaEntity> entities;
         if (date == null) {
-            entities = jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED.name());
+            entities = jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED_MANDOR.name());
         } else {
             entities = jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
-                    PengirimanStatus.APPROVED.name(),
+                    PengirimanStatus.APPROVED_MANDOR.name(),
                     date.atStartOfDay(),
                     toEndOfDay(date)
             );

@@ -68,8 +68,22 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
     @Override
     @Transactional(readOnly = true)
     public List<KebunDTO> findByNamaContainingOrKodeContaining(String nama, String kode) {
-        return kebunJpaRepository
-                .findByNamaContainingIgnoreCaseOrKodeContainingIgnoreCase(nama, kode)
+        String normalizedNama = nama == null ? "" : nama.trim();
+        String normalizedKode = kode == null ? "" : kode.trim();
+
+        List<KebunJpaEntity> entities;
+        if (!normalizedNama.isBlank() && !normalizedKode.isBlank()) {
+            entities = kebunJpaRepository
+                    .findByNamaContainingIgnoreCaseAndKodeContainingIgnoreCase(normalizedNama, normalizedKode);
+        } else if (!normalizedNama.isBlank()) {
+            entities = kebunJpaRepository.findByNamaContainingIgnoreCase(normalizedNama);
+        } else if (!normalizedKode.isBlank()) {
+            entities = kebunJpaRepository.findByKodeContainingIgnoreCase(normalizedKode);
+        } else {
+            entities = kebunJpaRepository.findAll();
+        }
+
+        return entities
                 .stream()
                 .map(kebunJpaMapper::toDto)
                 .collect(Collectors.toList());
@@ -89,13 +103,6 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
         return kebunSupirJpaRepository.findByKebunId(kebunId).stream()
                 .map(KebunSupirJpaEntity::getSupirId)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<UUID> findBuruhIdsByKebunId(UUID kebunId) {
-        // Buruh diambil via mandor di modul auth, bukan disimpan di kebun.
-        return List.of();
     }
 
     @Override
@@ -156,12 +163,18 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
         // Detach from old kebun (if any)
         kebunJpaRepository.findByMandorId(mandorId).ifPresent(old -> {
             old.setMandorId(null);
-            kebunJpaRepository.save(old);
+            kebunJpaRepository.saveAndFlush(old);
         });
 
         KebunJpaEntity target = kebunJpaRepository.findById(newKebunId)
                 .orElseThrow(() -> new EntityNotFoundException("Kebun not found: " + newKebunId));
         target.setMandorId(mandorId);
         kebunJpaRepository.save(target);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByKode(String kode) {
+        return kebunJpaRepository.existsByKode(kode);
     }
 }

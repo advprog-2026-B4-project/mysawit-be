@@ -24,8 +24,6 @@ public interface KebunRepositoryPort {
 
     List<UUID> findSupirIdsByKebunId(UUID kebunId);
 
-    List<UUID> findBuruhIdsByKebunId(UUID kebunId);
-
     void deleteById(UUID kebunId);
 
     boolean hasMandorAssigned(UUID kebunId);
@@ -44,4 +42,6 @@ public interface KebunRepositoryPort {
     UUID findKebunIdByMandorId(UUID mandorId);
 
     void moveMandor(UUID mandorId, UUID newKebunId);
+
+    boolean existsByKode(String kode);
 }

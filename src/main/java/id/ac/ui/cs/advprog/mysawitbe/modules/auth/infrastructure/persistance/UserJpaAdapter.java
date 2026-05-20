@@ -31,6 +31,8 @@ public class UserJpaAdapter implements UserRepositoryPort {
             entity.setName(domain.getName());
             entity.setEmail(domain.getEmail());
             entity.setRole(domain.getRole().name());
+            entity.setMandorCertificationNumber(domain.getMandorCertificationNumber());
+            entity.setMandorId(domain.getMandorId());
             if (hashedPassword != null) {
                 entity.setPassword(hashedPassword);
             }
@@ -92,6 +94,13 @@ public class UserJpaAdapter implements UserRepositoryPort {
     @Override
     public boolean existsById(UUID userId) {
         return repository.existsById(userId);
+    }
+
+    @Override
+    public UUID findMandorIdByBuruhId(UUID buruhId) {
+        return repository.findById(buruhId)
+                .map(UserJpaEntity::getMandorId)
+                .orElse(null);
     }
 
     @Override

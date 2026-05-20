@@ -11,6 +11,7 @@ public class User {
     private String hashedPassword;   // null for OAuth-only accounts
     private UserRole role;
     private UUID mandorId;           // non-null only when role == BURUH
+    private String mandorCertificationNumber;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -18,6 +19,7 @@ public class User {
 
     public User(UUID userId, String username, String email, String name,
                 String hashedPassword, UserRole role, UUID mandorId,
+                String mandorCertificationNumber,
                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.userId = userId;
         this.username = username;
@@ -26,6 +28,7 @@ public class User {
         this.hashedPassword = hashedPassword;
         this.role = role;
         this.mandorId = mandorId;
+        this.mandorCertificationNumber = mandorCertificationNumber;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -56,6 +59,11 @@ public class User {
 
     public UUID getMandorId() { return mandorId; }
     public void setMandorId(UUID mandorId) { this.mandorId = mandorId; }
+
+    public String getMandorCertificationNumber() { return mandorCertificationNumber; }
+    public void setMandorCertificationNumber(String mandorCertificationNumber) {
+        this.mandorCertificationNumber = mandorCertificationNumber;
+    }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

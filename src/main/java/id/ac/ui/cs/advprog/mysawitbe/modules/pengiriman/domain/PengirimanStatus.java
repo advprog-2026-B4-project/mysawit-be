@@ -4,6 +4,9 @@ public enum PengirimanStatus {
     ASSIGNED,
     IN_TRANSIT,
     TIBA,
-    APPROVED,
-    REJECTED
+    APPROVED_MANDOR,
+    APPROVED_ADMIN,
+    PARTIAL,
+    REJECTED_MANDOR,
+    REJECTED_ADMIN
 }

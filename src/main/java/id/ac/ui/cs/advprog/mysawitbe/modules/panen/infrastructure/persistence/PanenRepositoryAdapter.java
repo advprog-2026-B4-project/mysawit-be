@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.mysawitbe.modules.panen.infrastructure.persistence;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Repository;
 
@@ -31,7 +32,7 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
     public PanenDTO findById(UUID id) {
         // Mengembalikan null sesuai aturan "API Conventions" di README/agent.md 
         // agar Use Case yang melempar EntityNotFoundException, bukan layer ini.
-        return jpaRepository.findById(id)
+        return jpaRepository.findByIdWithPhotos(id)
                 .map(mapper::entityToDto)
                 .orElse(null);
     }
@@ -58,17 +59,20 @@ public class PanenRepositoryAdapter implements PanenRepositoryPort {
     }
 
     @Override
-    public List<PanenDTO> findByMandorId(UUID mandorId, String buruhName, LocalDate date) {
-        /*
-         * CATATAN ARSITEKTUR (Berdasarkan agent.md):
-         * Entitas PanenEntity tidak menyimpan mandorId maupun buruhName (data tersebut milik modul Auth/Kebun).
-         * Idealnya, di layer Application (PanenQueryImpl), harus dicari dulu "KebunId yang diawasi oleh Mandor", 
-         * lalu memanggil repositori berdasarkan KebunId.
-         * * Sebagai implementasi konkrit pada Port ini, kita terapkan filter DB sejauh yang dimungkinkan (Date),
-         * dan sisa filter (seperti nama buruh) bisa dilakukan melalui interaksi antar-modul di Service.
-         */
-        return jpaRepository.findAllWithDateFilter(date).stream()
+    public List<PanenDTO> findByKebunIdAndDate(UUID kebunId, LocalDate date) {
+        return jpaRepository.findByKebunIdAndDateFilter(kebunId, date).stream()
                 .map(mapper::entityToDto)
                 .toList();
+    }
+
+    @Override
+    public List<PanenDTO> findAllWithFilters(String status, LocalDate startDate, LocalDate endDate) {
+        // Konversi String ke Enum agar JPA tidak error
+        PanenStatus panenStatus = (status != null && !status.isBlank()) ? PanenStatus.valueOf(status.toUpperCase()) : null;
+        
+        return jpaRepository.findAllWithFilters(panenStatus, startDate, endDate)
+                .stream()
+                .map(mapper::entityToDto)
+                .collect(Collectors.toList());
     }
 }

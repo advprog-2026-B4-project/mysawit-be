@@ -12,6 +12,7 @@ public interface UserMapper {
     // JPA Entity -> Domain
     @Mapping(target = "hashedPassword", source = "password")
     @Mapping(target = "role", expression = "java(id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole.valueOf(entity.getRole()))")
+    @Mapping(target = "mandorId", source = "mandorId")
     User toDomain(UserJpaEntity entity);
 
     // Domain -> JPA Entity
@@ -25,6 +26,8 @@ public interface UserMapper {
     @Mapping(target = "name", source = "name")
     @Mapping(target = "role", expression = "java(domain.getRole().name())")
     @Mapping(target = "email", source = "email")
+    @Mapping(target = "mandorCertificationNumber", source = "mandorCertificationNumber")
+    @Mapping(target = "mandorId", source = "mandorId")
     UserDTO toDTO(User domain);
 
     // DTO -> Domain (password set separately)
@@ -32,6 +35,6 @@ public interface UserMapper {
     @Mapping(target = "role", expression = "java(id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole.valueOf(dto.role()))")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "mandorId", ignore = true)
+    @Mapping(target = "mandorId", source = "dto.mandorId")
     User toDomain(UserDTO dto);
 }

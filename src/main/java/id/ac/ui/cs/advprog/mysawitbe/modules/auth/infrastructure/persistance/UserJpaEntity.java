@@ -40,6 +40,9 @@ public class UserJpaEntity {
     @Column(name = "mandor_id")
     private UUID mandorId;
 
+    @Column(name = "mandor_certification_number", length = 100)
+    private String mandorCertificationNumber;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

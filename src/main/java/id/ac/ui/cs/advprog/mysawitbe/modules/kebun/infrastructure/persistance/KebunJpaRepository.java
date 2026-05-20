@@ -8,7 +8,11 @@ import java.util.UUID;
 
 public interface KebunJpaRepository extends JpaRepository<KebunJpaEntity, UUID> {
 
-    List<KebunJpaEntity> findByNamaContainingIgnoreCaseOrKodeContainingIgnoreCase(String nama, String kode);
+    List<KebunJpaEntity> findByNamaContainingIgnoreCase(String nama);
+
+    List<KebunJpaEntity> findByKodeContainingIgnoreCase(String kode);
+
+    List<KebunJpaEntity> findByNamaContainingIgnoreCaseAndKodeContainingIgnoreCase(String nama, String kode);
 
     Optional<KebunJpaEntity> findByMandorId(UUID mandorId);
 

@@ -35,6 +35,11 @@ public class UserQueryUseCaseImpl implements UserQueryUseCase {
     }
 
     @Override
+    public UUID getMandorIdByBuruhId(UUID buruhId) {
+        return userRepository.findMandorIdByBuruhId(buruhId);
+    }
+
+    @Override
     public boolean verifyUserExists(UUID userId) {
         return userRepository.existsById(userId);
     }
@@ -65,5 +70,14 @@ public class UserQueryUseCaseImpl implements UserQueryUseCase {
                     .toList();
         }
         return users;
+    }
+
+    @Override
+    public UUID getAnyAdminId() {
+        List<UserDTO> admins = userRepository.findByRole("ADMIN");
+        if (admins == null || admins.isEmpty()) {
+            throw new EntityNotFoundException("No admin user found");
+        }
+        return admins.get(0).userId();
     }
 }

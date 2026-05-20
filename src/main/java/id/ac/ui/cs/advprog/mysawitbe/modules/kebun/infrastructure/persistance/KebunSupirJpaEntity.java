@@ -35,5 +35,7 @@ public class KebunSupirJpaEntity {
     public UUID getKebunId() { return kebunId; }
     public UUID getSupirId() { return supirId; }
 
+    public void setId(UUID id) { this.id = id; }
     public void setKebunId(UUID kebunId) { this.kebunId = kebunId; }
+    public void setSupirId(UUID supirId) { this.supirId = supirId; }
 }

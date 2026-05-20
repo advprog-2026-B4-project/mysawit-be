@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -35,7 +37,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserDTO>> register(
             @Valid @RequestBody RegisterRequestDTO request) {
         UserDTO user = authCommandUseCase.registerUser(
-                request.email(), request.password(), request.name(), request.role().name());
+            request.email(), request.password(), request.name(), request.role().name(), request.mandorCertificationNumber());
         return ResponseEntity.status(201).body(ApiResponse.success(user));
     }
 
@@ -53,15 +55,34 @@ public class AuthController {
             @RequestParam String state,
             HttpServletResponse response) throws IOException {
         GoogleOAuthCallbackDTO callback = new GoogleOAuthCallbackDTO(code, state);
-        AuthTokenDTO token = authCommandUseCase.handleGoogleOAuthCallback(
+        OAuthCallbackResultDTO result = authCommandUseCase.handleGoogleOAuthCallback(
                 callback.code(), callback.state());
 
-        String redirectUrl = frontendUrl + "/auth/callback"
-                + "?token=" + token.accessToken()
-                + "&role=" + token.role();
+        String redirectUrl;
+        if (result.registrationRequired()) {
+            redirectUrl = frontendUrl + "/auth/callback"
+                + "?registrationToken=" + urlEncode(result.registrationToken())
+                + "&email=" + urlEncode(result.email())
+                + "&name=" + urlEncode(result.name());
+        } else {
+            redirectUrl = frontendUrl + "/auth/callback"
+                + "?token=" + urlEncode(result.accessToken())
+                + "&role=" + urlEncode(result.role());
+        }
 
         response.sendRedirect(redirectUrl);
     }
+
+        /** POST /api/auth/oauth2/complete-registration */
+        @PostMapping("/oauth2/complete-registration")
+        public ResponseEntity<ApiResponse<AuthTokenDTO>> completeOauthRegistration(
+            @Valid @RequestBody OAuthCompleteRegistrationRequestDTO request) {
+        AuthTokenDTO token = authCommandUseCase.completeGoogleOAuthRegistration(
+            request.registrationToken(),
+            request.role().name(),
+            request.mandorCertificationNumber());
+        return ResponseEntity.ok(ApiResponse.success(token));
+        }
 
     /** POST /api/auth/logout */
     @PostMapping("/logout")
@@ -69,5 +90,9 @@ public class AuthController {
             @RequestAttribute("userId") java.util.UUID userId) {
         authCommandUseCase.logout(userId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    private String urlEncode(String value) {
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 }

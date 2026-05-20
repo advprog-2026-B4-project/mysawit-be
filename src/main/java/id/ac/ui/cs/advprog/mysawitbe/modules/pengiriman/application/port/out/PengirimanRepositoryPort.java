@@ -16,6 +16,8 @@ public interface PengirimanRepositoryPort {
 
     PengirimanDTO findById(UUID pengirimanId);
 
+    List<UUID> findAssignedPanenIds(List<UUID> panenIds);
+
     List<PengirimanDTO> findBySupirId(UUID supirId, LocalDate startDate, LocalDate endDate);
 
     List<PengirimanDTO> findActiveByMandorId(UUID mandorId);

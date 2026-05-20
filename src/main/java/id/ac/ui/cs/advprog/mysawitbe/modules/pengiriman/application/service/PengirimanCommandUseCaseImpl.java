@@ -13,7 +13,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.Pen
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +37,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
     private final PengirimanRepositoryPort repository;
     private final KebunQueryUseCase kebunQueryUseCase;
     private final PanenQueryUseCase panenQueryUseCase;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
 
     @Override
     public PengirimanDTO assignSupirForDelivery(UUID mandorId, UUID supirId, List<UUID> panenIds) {
@@ -124,7 +124,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         });
 
         if (newStatus == PengirimanStatus.TIBA) {
-            eventPublisher.publishEvent(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
+            eventPublisher.publish(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
         }
         return saved;
     }
@@ -141,7 +141,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(null);
         });
 
-        eventPublisher.publishEvent(new PengirimanApprovedByMandorEvent(
+        eventPublisher.publish(new PengirimanApprovedByMandorEvent(
                 saved.pengirimanId(),
                 saved.supirId(),
                 saved.totalWeight()
@@ -223,7 +223,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(normalizedReason);
         });
 
-        eventPublisher.publishEvent(new PengirimanProcessedByAdminEvent(
+        eventPublisher.publish(new PengirimanProcessedByAdminEvent(
                 saved.pengirimanId(),
                 saved.mandorId(),
                 saved.acceptedWeight(),

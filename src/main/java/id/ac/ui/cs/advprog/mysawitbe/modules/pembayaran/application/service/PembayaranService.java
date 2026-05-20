@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +69,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final PanenQueryUseCase panenQueryUseCase;
 	private final UserQueryUseCase userQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
-	private final ApplicationEventPublisher eventPublisher;
+	private final DomainEventPublisher eventPublisher;
 
 	@Override
 	public PayrollStatusDTO getPayrollStatus(UUID payrollId) {
@@ -249,7 +249,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 		PayrollDTO saved = payrollRepository.save(approved);
 		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
 		return saved;
 	}
 
@@ -280,7 +280,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		);
 
 		PayrollDTO saved = payrollRepository.save(rejected);
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_REJECTED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_REJECTED));
 		return saved;
 	}
 
@@ -408,7 +408,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		);
 		PayrollDTO saved = payrollRepository.save(approved);
 		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
 	}
 
 	private PayrollDTO requirePayroll(UUID payrollId) {

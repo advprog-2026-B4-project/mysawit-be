@@ -20,6 +20,7 @@ import java.util.UUID;
 @Entity
 @Table(
 		name = "payrolls",
+		schema = "pembayaran",
 		uniqueConstraints = @UniqueConstraint(
 				name = "uk_payrolls_user_role_reference",
 				columnNames = {"user_id", "role", "reference_id", "reference_type"}

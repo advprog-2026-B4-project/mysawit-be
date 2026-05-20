@@ -11,7 +11,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.out.KebunRep
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.domain.BoundingBox;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.domain.KebunGeometry;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +26,11 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
 
     private final KebunRepositoryPort kebunRepository;
     private final UserQueryUseCase userQueryUseCase;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
 
     public KebunUseCaseService(KebunRepositoryPort kebunRepository,
                                UserQueryUseCase userQueryUseCase,
-                               ApplicationEventPublisher eventPublisher) {
+                               DomainEventPublisher eventPublisher) {
         this.kebunRepository = kebunRepository;
         this.userQueryUseCase = userQueryUseCase;
         this.eventPublisher = eventPublisher;
@@ -106,7 +106,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         ensureKebunHasNoMandor(kebunId, "Kebun sudah memiliki mandor");
 
         kebunRepository.assignMandor(mandorId, kebunId);
-        eventPublisher.publishEvent(new MandorAssignedToKebunEvent(mandorId, kebunId));
+        eventPublisher.publish(new MandorAssignedToKebunEvent(mandorId, kebunId));
     }
 
     @Override
@@ -133,7 +133,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         ensureKebunHasNoMandor(newKebunId, "Kebun tujuan sudah memiliki mandor");
 
         kebunRepository.moveMandor(mandorId, newKebunId);
-        eventPublisher.publishEvent(new MandorAssignedToKebunEvent(mandorId, newKebunId));
+        eventPublisher.publish(new MandorAssignedToKebunEvent(mandorId, newKebunId));
     }
 
     @Override

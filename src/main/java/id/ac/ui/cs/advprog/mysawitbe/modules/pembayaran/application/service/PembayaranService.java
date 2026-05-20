@@ -27,9 +27,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -152,7 +154,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
 	@Transactional
 	public void onPanenApproved(PanenApprovedEvent event) {
 		if (event == null || event.weight() <= 0) {
@@ -181,7 +184,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
 	@Transactional
 	public void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event) {
 		if (event == null || event.totalWeight() <= 0) {
@@ -197,7 +201,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
 	@Transactional
 	public void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event) {
 		if (event == null || event.acceptedWeight() <= 0) {

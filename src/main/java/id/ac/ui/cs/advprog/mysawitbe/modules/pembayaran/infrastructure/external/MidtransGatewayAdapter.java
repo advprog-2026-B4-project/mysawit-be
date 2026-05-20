@@ -9,8 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.net.http.HttpClient;
 import java.security.MessageDigest;
@@ -93,6 +96,7 @@ public class MidtransGatewayAdapter implements PaymentGatewayPort {
         }
     }
 
+    @Retryable(retryFor = RestClientException.class, maxAttempts = 3, backoff = @Backoff(delay = 200))
     @Override
     public PaymentCallbackDTO fetchTransactionStatus(String orderId) {
         String apiUrl = props.snapBaseUrl().contains("sandbox")

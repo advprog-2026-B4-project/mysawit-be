@@ -21,7 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
@@ -40,7 +40,7 @@ class PanenCommandImplTest {
 
     @Mock private PanenRepositoryPort repositoryPort;
     @Mock private PanenMapperPort mapper;
-    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DomainEventPublisher eventPublisher;
     @Mock private UserQueryUseCase userQueryUseCase;
     @Mock private KebunQueryUseCase kebunQueryUseCase;
 

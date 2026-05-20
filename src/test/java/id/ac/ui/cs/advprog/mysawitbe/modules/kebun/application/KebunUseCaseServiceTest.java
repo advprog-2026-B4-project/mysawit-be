@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +29,7 @@ class KebunUseCaseServiceTest {
 
     @Mock private KebunRepositoryPort kebunRepository;
     @Mock private UserQueryUseCase userQueryUseCase;
-    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DomainEventPublisher eventPublisher;
     @InjectMocks private KebunUseCaseService service;
 
     private List<CoordinateDTO> coordinates;

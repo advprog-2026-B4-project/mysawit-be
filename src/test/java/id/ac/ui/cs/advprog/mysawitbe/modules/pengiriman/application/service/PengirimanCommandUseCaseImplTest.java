@@ -18,7 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,7 +44,7 @@ class PengirimanCommandUseCaseImplTest {
     private PanenQueryUseCase panenQueryUseCase;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private PengirimanCommandUseCaseImpl service;

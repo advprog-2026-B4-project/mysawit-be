@@ -25,7 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,7 +60,7 @@ class PembayaranServiceTest {
     private ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private DomainEventPublisher eventPublisher;
 
     @Mock
     private MidtransProperties midtransProperties;

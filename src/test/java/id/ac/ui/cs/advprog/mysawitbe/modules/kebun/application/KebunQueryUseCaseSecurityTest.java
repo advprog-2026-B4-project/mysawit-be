@@ -7,7 +7,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.out.KebunRep
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,15 +50,15 @@ class KebunQueryUseCaseSecurityTest {
         }
 
         @Bean
-        ApplicationEventPublisher applicationEventPublisher() {
-            return mock(ApplicationEventPublisher.class);
+        DomainEventPublisher applicationEventPublisher() {
+            return mock(DomainEventPublisher.class);
         }
 
         @Bean
         KebunUseCaseService kebunUseCaseService(
                 KebunRepositoryPort kebunRepositoryPort,
                 UserQueryUseCase userQueryUseCase,
-                ApplicationEventPublisher applicationEventPublisher
+                DomainEventPublisher applicationEventPublisher
         ) {
             return new KebunUseCaseService(kebunRepositoryPort, userQueryUseCase, applicationEventPublisher);
         }

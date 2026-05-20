@@ -13,6 +13,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTr
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PaymentGatewayPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.PayrollRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.WalletRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.service.PembayaranService;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,6 +30,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -249,7 +251,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq((long) grossAmount), eq(orderId));
     }
 
     @Test
@@ -275,7 +277,7 @@ class PembayaranServiceTest {
 
         service.handlePaymentCallback(callback);
 
-        verify(walletRepository).creditTopUp(eq(adminId), eq(grossAmount / 100), eq(orderId));
+        verify(walletRepository).creditTopUp(eq(adminId), eq((long) grossAmount), eq(orderId));
     }
 
     @Test
@@ -456,7 +458,7 @@ class PembayaranServiceTest {
 
         when(payrollRepository.findByUserId(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(repoResult);
         PanenDTO panen = new PanenDTO(panenId, userId, "Buruh Satu", UUID.randomUUID(), "desc", 1000, "APPROVED", null, List.of(new PanenDTO.PhotoDTO(UUID.randomUUID(), "http://photo1.jpg"), new PanenDTO.PhotoDTO(UUID.randomUUID(), "http://photo2.jpg")), LocalDateTime.now());
-        when(panenQueryUseCase.getPanenById(panenId)).thenReturn(panen);
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of(panenId, panen));
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 
@@ -484,7 +486,7 @@ class PembayaranServiceTest {
         PayrollPageDTO repoResult = new PayrollPageDTO(List.of(payroll), 0, 10, 1, 1, false, false);
 
         when(payrollRepository.findByUserId(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(repoResult);
-        when(panenQueryUseCase.getPanenById(panenId)).thenThrow(new RuntimeException("not found"));
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of());
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 
@@ -605,8 +607,8 @@ class PembayaranServiceTest {
         PayrollDTO result = service.approvePayroll(payrollId, adminId);
 
         assertThat(result.status()).isEqualTo("APPROVED");
-        verify(walletRepository).debit(eq(adminId), eq(8000), eq(payrollId));
-        verify(walletRepository).credit(eq(userId), eq(8000), eq(payrollId));
+        verify(walletRepository).debit(eq(adminId), eq(8000L), eq(payrollId));
+        verify(walletRepository).credit(eq(userId), eq(8000L), eq(payrollId));
     }
 
     @Test
@@ -852,7 +854,7 @@ class PembayaranServiceTest {
 
         when(payrollRepository.findByUserId(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(repoResult);
         PanenDTO panenWithNullPhotos = new PanenDTO(panenId, userId, "Buruh Satu", UUID.randomUUID(), "desc", 1000, "APPROVED", null, null, LocalDateTime.now());
-        when(panenQueryUseCase.getPanenById(panenId)).thenReturn(panenWithNullPhotos);
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of(panenId, panenWithNullPhotos));
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 
@@ -872,7 +874,7 @@ class PembayaranServiceTest {
                 List.of(new PanenDTO.PhotoDTO(UUID.randomUUID(), "http://photo1.jpg"), new PanenDTO.PhotoDTO(UUID.randomUUID(), null), new PanenDTO.PhotoDTO(UUID.randomUUID(), "   ")),
                 LocalDateTime.now()
         );
-        when(panenQueryUseCase.getPanenById(panenId)).thenReturn(panenWithNullUrls);
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of(panenId, panenWithNullUrls));
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 
@@ -896,7 +898,7 @@ class PembayaranServiceTest {
                 ),
                 LocalDateTime.now()
         );
-        when(panenQueryUseCase.getPanenById(panenId)).thenReturn(panenWithDuplicates);
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of(panenId, panenWithDuplicates));
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 
@@ -998,7 +1000,7 @@ class PembayaranServiceTest {
         PayrollPageDTO repoResult = new PayrollPageDTO(List.of(payroll), 0, 10, 1, 1, false, false);
 
         when(payrollRepository.findByUserId(any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(repoResult);
-        when(panenQueryUseCase.getPanenById(panenId)).thenReturn(null);
+        when(panenQueryUseCase.getPanenByIds(any())).thenReturn(Map.of());
 
         PayrollPageDTO result = service.getPayrollsByUserId(userId, null, null, null, 0, 10);
 

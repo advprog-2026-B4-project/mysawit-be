@@ -49,7 +49,6 @@ class HexagonalArchitectureTest {
     @ArchTest
     static final ArchRule services_must_not_reside_in_infrastructure_service = noClasses()
             .that().areAnnotatedWith(org.springframework.stereotype.Service.class)
-            .and().doNotHaveSimpleName("VariabelPokokService") // TODO: move to application/service
             .should().resideInAPackage("..infrastructure.service..")
             .because("@Service beans must not be placed in the infrastructure layer's service sub-package");
 }

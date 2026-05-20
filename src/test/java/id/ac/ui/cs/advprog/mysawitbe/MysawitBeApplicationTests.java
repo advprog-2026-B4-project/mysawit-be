@@ -19,7 +19,11 @@ import org.springframework.test.context.TestPropertySource;
     "spring.flyway.enabled=false",
     "REDIS_HOST=localhost",
     "REDIS_PORT=6379",
-    "REDIS_PASSWORD="
+    "REDIS_PASSWORD=",
+    "spring.security.oauth2.client.registration.google.client-id=test-client-id",
+    "spring.security.oauth2.client.registration.google.client-secret=test-client-secret",
+    "app.google.redirect-uri=http://localhost:8080/api/auth/oauth2/callback",
+    "app.frontend.url=http://localhost:3000"
 })
 class MysawitBeApplicationTests {
 

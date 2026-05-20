@@ -45,7 +45,7 @@ public class SecurityConfig {
                                                "/api/pembayaran/wallet/midtrans-callback").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/auth/oauth2/url",
                                                "/api/auth/oauth2/callback").permitAll()
-                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/actuator/**").denyAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

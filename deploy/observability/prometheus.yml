@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  external_labels:
+    monitor: mysawit-prod
+
+scrape_configs:
+  - job_name: 'mysawit-be'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['${BACKEND_HOST}:9090']
+        labels:
+          app: mysawit-be
+          env: production
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

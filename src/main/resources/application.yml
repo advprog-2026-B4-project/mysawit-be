@@ -109,6 +109,13 @@ management:
       application: mysawit-be
 
 logging:
+  file:
+    name: logs/mysawit-be.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB
   level:
     id.ac.ui.cs.advprog.mysawitbe: ${LOG_LEVEL:INFO}
     org.springframework.security: WARN

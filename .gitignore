@@ -50,3 +50,4 @@ k6/data/*
 
 __pycache__/
 graphify-out/
+logs/

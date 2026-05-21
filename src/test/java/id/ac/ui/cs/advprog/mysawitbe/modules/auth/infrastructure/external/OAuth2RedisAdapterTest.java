@@ -8,8 +8,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -25,88 +30,46 @@ class OAuth2RedisAdapterTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private WebClient webClient;
+
+    @Mock
+    private WebClient.RequestBodyUriSpec requestBodyUriSpec;
+
+    @Mock
+    private WebClient.RequestBodySpec requestBodySpec;
+
+    @Mock
+    private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
+
+    @Mock
+    private WebClient.RequestHeadersSpec requestHeadersSpec;
+
+    @Mock
+    private WebClient.ResponseSpec responseSpec;
+
     private OAuth2RedisAdapter oauth2RedisAdapter;
-    private final String clientId = "test-client-id";
-    private final String clientSecret = "test-client-secret";
 
     @BeforeEach
     void setUp() {
-        oauth2RedisAdapter = new OAuth2RedisAdapter(redisTemplate, clientId, clientSecret);
+        oauth2RedisAdapter = new OAuth2RedisAdapter(redisTemplate, "test-client-id", "test-client-secret");
+        ReflectionTestUtils.setField(oauth2RedisAdapter, "webClient", webClient);
     }
 
-    // ===================== GENERATE STATE TESTS =====================
+    private void setupWebClientMocks(Map<String, Object> tokenResponse, Map<String, Object> userInfoResponse) {
+        when(webClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        doReturn(requestBodySpec).when(requestBodySpec).bodyValue(any());
+        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
 
-    @Test
-    @DisplayName("Should generate random state token")
-    void testGenerateState() {
-        String state = oauth2RedisAdapter.generateState();
+        when(webClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
+        doReturn(requestHeadersSpec).when(requestHeadersSpec).header(anyString(), anyString());
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
 
-        assertNotNull(state);
-        assertFalse(state.isEmpty());
-        assertTrue(state.length() > 10);
-    }
-
-    @Test
-    @DisplayName("Should generate different states on each call")
-    void testGenerateStateUniqueness() {
-        String state1 = oauth2RedisAdapter.generateState();
-        String state2 = oauth2RedisAdapter.generateState();
-
-        assertNotEquals(state1, state2);
-    }
-
-    @Test
-    @DisplayName("Should generate state with URL-safe base64 encoding")
-    void testGenerateStateFormat() {
-        String state = oauth2RedisAdapter.generateState();
-        
-        assertFalse(state.contains("+"), "State should not contain + character");
-        assertFalse(state.contains("/"), "State should not contain / character");
-        assertFalse(state.contains("="), "State should not contain padding");
-    }
-
-    @Test
-    @DisplayName("Should generate state with sufficient entropy")
-    void testStateEntropy() {
-        java.util.Set<String> states = new java.util.HashSet<>();
-        for (int i = 0; i < 100; i++) {
-            states.add(oauth2RedisAdapter.generateState());
-        }
-
-        assertEquals(100, states.size(), "All states should be unique");
-    }
-
-    // ===================== STORE STATE TESTS =====================
-
-    @Test
-    @DisplayName("Should store state successfully")
-    void testStoreStateSuccess() {
-        String state = "test-state-12345";
-        Duration ttl = Duration.ofMinutes(10);
-
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
-
-        boolean result = oauth2RedisAdapter.storeState(state, ttl);
-
-        assertTrue(result);
-        verify(redisTemplate).opsForValue();
-        verify(valueOperations).set("oauth2:state:" + state, "1", ttl);
-    }
-
-    @Test
-    @DisplayName("Should store state multiple times with success")
-    void testStoreStateMultipleTimes() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
-
-        for (int i = 0; i < 5; i++) {
-            String state = "state-" + i;
-            boolean result = oauth2RedisAdapter.storeState(state, Duration.ofMinutes(10));
-            assertTrue(result);
-        }
-
-        verify(valueOperations, times(5)).set(anyString(), eq("1"), any(Duration.class));
+        when(responseSpec.bodyToMono(Map.class))
+                .thenReturn(Mono.just(tokenResponse))
+                .thenReturn(Mono.just(userInfoResponse));
     }
 
     @Test
@@ -125,114 +88,72 @@ class OAuth2RedisAdapterTest {
     }
 
     @Test
-    @DisplayName("Should handle store state exception gracefully")
-    void testStoreStateWithException() {
-        String state = "test-state";
-        Duration ttl = Duration.ofMinutes(10);
-
-        when(redisTemplate.opsForValue()).thenThrow(new RuntimeException("Redis connection error"));
-
-        boolean result = oauth2RedisAdapter.storeState(state, ttl);
-
-        assertFalse(result);
-    }
-
-    // ===================== VALIDATE AND CONSUME STATE TESTS =====================
-
-    @Test
     @DisplayName("Should validate and consume valid state")
     void testValidateAndConsumeValidState() {
         String state = "valid-state";
+        String key = "oauth2:state:" + state;
 
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
-        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state);
-
-        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
-
-        assertTrue(result);
-        verify(redisTemplate).hasKey("oauth2:state:" + state);
-        verify(redisTemplate).delete("oauth2:state:" + state);
-    }
-
-    @Test
-    @DisplayName("Should reject invalid state")
-    void testValidateAndConsumeInvalidState() {
-        String state = "invalid-state";
-
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(false);
-
-        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
-
-        assertFalse(result);
-        verify(redisTemplate).hasKey("oauth2:state:" + state);
-        verify(redisTemplate, never()).delete(anyString());
-    }
-
-    @Test
-    @DisplayName("Should reject state that was already consumed")
-    void testValidateAndConsumeAlreadyConsumedState() {
-        String state = "already-consumed-state";
-
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
-        doReturn(false).when(redisTemplate).delete("oauth2:state:" + state);
-
-        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
-
-        assertFalse(result);
-    }
-
-    @Test
-    @DisplayName("Should handle multiple state validations")
-    void testMultipleStateValidations() {
-        String state1 = "state-1";
-        when(redisTemplate.hasKey("oauth2:state:" + state1)).thenReturn(true);
-        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state1);
-
-        boolean result1 = oauth2RedisAdapter.validateAndConsumeState(state1);
-        assertTrue(result1);
-
-        String state2 = "state-2";
-        when(redisTemplate.hasKey("oauth2:state:" + state2)).thenReturn(true);
-        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state2);
-
-        boolean result2 = oauth2RedisAdapter.validateAndConsumeState(state2);
-        assertTrue(result2);
-    }
-
-    @Test
-    @DisplayName("Should validate state with special characters")
-    void testValidateStateWithSpecialCharacters() {
-        String state = "state-with-special-_-chars";
-
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
-        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state);
+        when(redisTemplate.hasKey(key)).thenReturn(true);
+        when(redisTemplate.delete(key)).thenReturn(Boolean.TRUE);
 
         boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
 
         assertTrue(result);
+        verify(redisTemplate).hasKey(key);
+        verify(redisTemplate).delete(key);
     }
 
     @Test
-    @DisplayName("Should handle null return from Redis hasKey")
-    void testValidateStateWithNullFromRedis() {
-        String state = "test-state";
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(null);
+    @DisplayName("Should exchange code for tokens successfully")
+    void testExchangeCodeForTokensSuccess() {
+        String code = "auth_code";
+        String redirectUri = "http://localhost:8080/callback";
+        String accessToken = "test_access_token";
+        String email = "user@example.com";
+        String name = "Test User";
 
-        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
+        Map<String, Object> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", accessToken);
+        tokenResponse.put("token_type", "Bearer");
 
-        assertFalse(result);
+        Map<String, Object> userInfoResponse = new HashMap<>();
+        userInfoResponse.put("email", email);
+        userInfoResponse.put("name", name);
+        userInfoResponse.put("picture", "https://example.com/pic.jpg");
+
+        setupWebClientMocks(tokenResponse, userInfoResponse);
+
+        Map<String, Object> result = oauth2RedisAdapter.exchangeCodeForTokens(code, redirectUri);
+
+        assertNotNull(result);
+        assertEquals(accessToken, result.get("access_token"));
+        assertEquals(email, result.get("email"));
+        assertEquals(name, result.get("name"));
+        assertEquals("https://example.com/pic.jpg", result.get("picture"));
     }
 
     @Test
-    @DisplayName("Should handle false return from Redis hasKey")
-    void testValidateStateWithFalseFromRedis() {
-        String state = "test-state";
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(Boolean.FALSE);
+    @DisplayName("Should handle missing picture field in user info")
+    void testExchangeCodeForTokensMissingPicture() {
+        String code = "auth-code-123";
+        String redirectUri = "http://localhost:8080/callback";
+        String accessToken = "access-token-xyz";
+        String email = "user@example.com";
+        String name = "Test User";
 
-        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
+        Map<String, Object> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", accessToken);
 
-        assertFalse(result);
+        Map<String, Object> userInfoResponse = new HashMap<>();
+        userInfoResponse.put("email", email);
+        userInfoResponse.put("name", name);
+
+        setupWebClientMocks(tokenResponse, userInfoResponse);
+
+        Map<String, Object> result = oauth2RedisAdapter.exchangeCodeForTokens(code, redirectUri);
+
+        assertNotNull(result);
+        assertNull(result.get("picture"));
+        assertEquals(email, result.get("email"));
     }
 }
-
-

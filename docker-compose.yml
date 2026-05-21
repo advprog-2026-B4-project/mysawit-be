@@ -51,6 +51,8 @@ services:
       JAVA_OPTS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005
       # Set to true in production; false here so k6 load tests are not blocked by rate limiting
       RATE_LIMIT_ENABLED: "false"
+    volumes:
+      - logs_data:/opt/mysawit/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +87,36 @@ services:
       - ./deploy/observability/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.4.0
+    container_name: mysawit-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./deploy/observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  alloy:
+    image: grafana/alloy:v1.7.0
+    container_name: mysawit-alloy
+    volumes:
+      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - logs_data:/var/log/mysawit:ro
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    depends_on:
+      loki:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
 volumes:
   postgres_data:
@@ -94,4 +126,8 @@ volumes:
   prometheus_data:
     driver: local
   grafana_data:
+    driver: local
+  logs_data:
+    driver: local
+  loki_data:
     driver: local

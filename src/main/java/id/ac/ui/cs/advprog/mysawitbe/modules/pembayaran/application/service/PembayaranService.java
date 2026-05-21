@@ -451,8 +451,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	private int computeWageFromGrams(int weight, int wageRate) {
-		// weight is in grams; wageRate is per kilogram — divide by 1000 to convert
-		long result = (long) weight * wageRate / 1000;
+		long result = (long) weight * wageRate;
 		if (result > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Payroll amount exceeds maximum supported value");
 		}

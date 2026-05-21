@@ -713,8 +713,9 @@ public class SeedPayrollTestData {
             String paymentReference
     ) {
         int netAmount() {
-            // weight is in grams; wageRateApplied is per kilogram — divide by 1000 to convert
-            long value = (long) weight * wageRateApplied / 1000;
+                // weight and wageRateApplied use the same smallest-unit scale, so multiply directly.
+                long value = (long) weight * wageRateApplied;
+
             if (value > Integer.MAX_VALUE) {
                 throw new IllegalArgumentException("Seed payroll amount overflow for " + payrollId);
             }

@@ -2,6 +2,8 @@ package id.ac.ui.cs.advprog.mysawitbe.common.config;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 2)
@@ -24,17 +25,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String REGISTER_PATH = "/api/auth/register";
     private static final String MIDTRANS_PATH = "/api/pembayaran/wallet/midtrans-callback";
 
+    private static final String KEY_LOGIN    = "rl:login:";
+    private static final String KEY_REGISTER = "rl:register:";
+    private static final String KEY_MIDTRANS = "rl:midtrans:global";
+
     private final boolean rateLimitEnabled;
+    private final LettuceBasedProxyManager<String> proxyManager;
 
-    // Per-IP buckets for user-facing auth endpoints
-    private final ConcurrentHashMap<String, Bucket> loginBuckets    = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Bucket> registerBuckets = new ConcurrentHashMap<>();
+    private final BucketConfiguration loginConfig;
+    private final BucketConfiguration registerConfig;
+    private final BucketConfiguration midtransConfig;
 
-    // Shared global bucket for the Midtrans webhook (server-to-server, not per-IP)
-    private final Bucket midtransBucket = buildBucket(60, Duration.ofMinutes(1));
-
-    public RateLimitFilter(@Value("${app.rate-limit.enabled:true}") boolean rateLimitEnabled) {
+    public RateLimitFilter(
+            @Value("${app.rate-limit.enabled:true}") boolean rateLimitEnabled,
+            LettuceBasedProxyManager<String> proxyManager) {
         this.rateLimitEnabled = rateLimitEnabled;
+        this.proxyManager = proxyManager;
+
+        this.loginConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder().capacity(10).refillGreedy(10, Duration.ofMinutes(15)).build())
+                .build();
+        this.registerConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder().capacity(5).refillGreedy(5, Duration.ofHours(1)).build())
+                .build();
+        this.midtransConfig = BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder().capacity(60).refillGreedy(60, Duration.ofMinutes(1)).build())
+                .build();
     }
 
     @Override
@@ -54,11 +70,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         Bucket bucket = switch (path) {
-            case LOGIN_PATH    -> loginBuckets.computeIfAbsent(
-                                      clientIp(request), k -> buildBucket(10, Duration.ofMinutes(15)));
-            case REGISTER_PATH -> registerBuckets.computeIfAbsent(
-                                      clientIp(request), k -> buildBucket(5, Duration.ofHours(1)));
-            case MIDTRANS_PATH -> midtransBucket;
+            case LOGIN_PATH    -> proxyManager.builder()
+                    .withKey(KEY_LOGIN + clientIp(request))
+                    .withConfiguration(loginConfig)
+                    .build();
+            case REGISTER_PATH -> proxyManager.builder()
+                    .withKey(KEY_REGISTER + clientIp(request))
+                    .withConfiguration(registerConfig)
+                    .build();
+            case MIDTRANS_PATH -> proxyManager.builder()
+                    .withKey(KEY_MIDTRANS)
+                    .withConfiguration(midtransConfig)
+                    .build();
             default            -> null;
         };
 
@@ -81,14 +104,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private static String clientIp(HttpServletRequest request) {
-        // ForwardedHeaderFilter (registered at HIGHEST_PRECEDENCE) has already rewritten
-        // getRemoteAddr() to the real client IP from X-Forwarded-For.
         return request.getRemoteAddr();
-    }
-
-    private static Bucket buildBucket(int capacity, Duration period) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.builder().capacity(capacity).refillGreedy(capacity, period).build())
-                .build();
     }
 }

@@ -2,8 +2,10 @@ package id.ac.ui.cs.advprog.mysawitbe.common.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -13,7 +15,15 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.distributed.proxy.SuppliedBucketBuilder;
+import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,12 +47,54 @@ class RateLimitFilterTest {
     @Mock
     private FilterChain filterChain;
 
+    @Mock
+    private LettuceBasedProxyManager<String> proxyManager;
+
     private StringWriter responseWriter;
+
+    // Simulates Redis-backed state: buckets are cached by key so repeated
+    // requests with the same key hit the same bucket (shared state).
+    private final ConcurrentMap<String, Bucket> bucketStore = new ConcurrentHashMap<>();
 
     @BeforeEach
     void setUp() throws IOException {
         responseWriter = new StringWriter();
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+
+        // Wire proxyManager.builder() to return mock builders that delegate
+        // to in-memory buckets keyed by the Redis key string.
+        when(proxyManager.builder()).thenAnswer(invocation -> {
+            // Captured state for this builder instance
+            final BucketConfiguration[] configHolder = new BucketConfiguration[1];
+            final String[] keyHolder = new String[1];
+
+            SuppliedBucketBuilder mockBuilder = org.mockito.Mockito.mock(SuppliedBucketBuilder.class);
+            when(mockBuilder.withKey(any())).thenAnswer(args -> {
+                keyHolder[0] = (String) args.getArgument(0);
+                return mockBuilder;
+            });
+            doAnswer(args -> {
+                configHolder[0] = args.getArgument(0);
+                return mockBuilder;
+            }).when(mockBuilder).withConfiguration(any(BucketConfiguration.class));
+
+            when(mockBuilder.build()).thenAnswer(args -> {
+                String key = keyHolder[0] != null ? keyHolder[0] : "default";
+                return bucketStore.computeIfAbsent(key, k -> {
+                    BucketConfiguration cfg = configHolder[0];
+                    if (cfg == null) {
+                        // Shouldn't happen; provide a generous fallback
+                        cfg = BucketConfiguration.builder()
+                                .addLimit(Bandwidth.builder().capacity(100)
+                                        .refillGreedy(100, Duration.ofMinutes(1)).build())
+                                .build();
+                    }
+                    return Bucket.builder().withConfiguration(cfg).build();
+                });
+            });
+
+            return mockBuilder;
+        });
     }
 
     @Nested
@@ -50,7 +102,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_disabled_alwaysPassesThrough() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(false);
+            RateLimitFilter filter = new RateLimitFilter(false, proxyManager);
 
             filter.doFilterInternal(request, response, filterChain);
 
@@ -59,7 +111,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_getRequest_bypassesRateLimit() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("GET");
 
             filter.doFilterInternal(request, response, filterChain);
@@ -69,7 +121,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_putRequest_bypassesRateLimit() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("PUT");
 
             filter.doFilterInternal(request, response, filterChain);
@@ -79,7 +131,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_unmonitoredPostPath_bypassesRateLimit() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/panen");
 
@@ -90,7 +142,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_loginPath_firstRequest_passesThrough() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("192.168.1.1");
@@ -102,7 +154,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_registerPath_firstRequest_passesThrough() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/register");
             when(request.getRemoteAddr()).thenReturn("192.168.1.2");
@@ -114,7 +166,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_midtransPath_firstRequest_passesThrough() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/pembayaran/wallet/midtrans-callback");
 
@@ -125,7 +177,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_loginPath_rateLimitExceeded_returns429() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("192.168.1.3");
@@ -151,7 +203,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_midtransPath_globalBucketShared() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/pembayaran/wallet/midtrans-callback");
 
@@ -166,7 +218,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_rateLimited_returnsJsonErrorBody() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("10.0.0.1");
@@ -191,7 +243,7 @@ class RateLimitFilterTest {
 
         @Test
         void doFilterInternal_rateLimited_returnsContentTypeJson() throws ServletException, IOException {
-            RateLimitFilter filter = new RateLimitFilter(true);
+            RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("10.0.0.2");

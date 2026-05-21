@@ -298,7 +298,93 @@ class AuthControllerTest {
         verify(httpServletResponse).sendRedirect(redirectCaptor.capture());
         String redirectUrl = redirectCaptor.getValue();
         assertTrue(redirectUrl.contains("registrationToken="));
-        assertNotNull(redirectUrl);
+    }
+
+    @Test
+    @DisplayName("Should handle complete OAuth registration as MANDOR")
+    void testCompleteOAuthRegistrationWithMandorAndCertification() {
+        String registrationToken = "reg_token_mandor";
+        UserRole role = UserRole.MANDOR;
+        String certNumber = "CERT-99999";
+        OAuthCompleteRegistrationRequestDTO request = new OAuthCompleteRegistrationRequestDTO(registrationToken, role, certNumber);
+        String token = "jwt_token_mandor";
+        AuthTokenDTO response = new AuthTokenDTO(token, "MANDOR");
+
+        when(authCommandUseCase.completeGoogleOAuthRegistration(registrationToken, role.name(), certNumber)).thenReturn(response);
+
+        ResponseEntity<ApiResponse<AuthTokenDTO>> result = authController.completeOauthRegistration(request);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertTrue(result.getBody().success());
+        assertEquals("MANDOR", result.getBody().data().role());
+    }
+
+    @Test
+    @DisplayName("Should handle login with empty email")
+    void testLoginWithEmptyEmail() {
+        String email = "";
+        String password = "password";
+        LoginRequestDTO request = new LoginRequestDTO(email, password);
+
+        when(authCommandUseCase.loginWithEmail(email, password))
+                .thenThrow(new IllegalArgumentException("Email is required"));
+
+        assertThrows(IllegalArgumentException.class, () -> authController.login(request));
+    }
+
+    @Test
+    @DisplayName("Should handle register with empty name")
+    void testRegisterWithEmptyName() {
+        RegisterRequestDTO request = new RegisterRequestDTO("test@example.com", "password", "", UserRole.BURUH, null);
+
+        when(authCommandUseCase.registerUser("test@example.com", "password", "", UserRole.BURUH.name(), null))
+                .thenThrow(new IllegalArgumentException("Name is required"));
+
+        assertThrows(IllegalArgumentException.class, () -> authController.register(request));
+    }
+
+    @Test
+    @DisplayName("Should handle OAuth callback when user info is incomplete")
+    void testOAuthCallbackWithIncompleteUserInfo() throws IOException {
+        String code = "code_incomplete";
+        String state = "state_incomplete";
+
+        when(authCommandUseCase.handleGoogleOAuthCallback(code, state))
+                .thenThrow(new IllegalStateException("Incomplete user info from Google"));
+
+        assertThrows(IllegalStateException.class, () -> authController.oauthCallback(code, state, httpServletResponse));
+    }
+
+    @Test
+    @DisplayName("Should handle complete OAuth registration with invalid token")
+    void testCompleteOAuthRegistrationWithInvalidToken() {
+        OAuthCompleteRegistrationRequestDTO request = new OAuthCompleteRegistrationRequestDTO("invalid_token", UserRole.BURUH, null);
+
+        when(authCommandUseCase.completeGoogleOAuthRegistration("invalid_token", UserRole.BURUH.name(), null))
+                .thenThrow(new IllegalArgumentException("Invalid registration token"));
+
+        assertThrows(IllegalArgumentException.class, () -> authController.completeOauthRegistration(request));
+    }
+
+    @Test
+    @DisplayName("Should handle login with valid credentials from different roles")
+    void testLoginWithDifferentRoles() {
+        String[] roles = {"BURUH", "MANDOR", "SUPIR"};
+
+        for (String role : roles) {
+            String email = "user-" + role.toLowerCase() + "@example.com";
+            String password = "password123";
+            String token = "token-" + role;
+            LoginRequestDTO request = new LoginRequestDTO(email, password);
+            AuthTokenDTO response = new AuthTokenDTO(token, role);
+
+            when(authCommandUseCase.loginWithEmail(email, password)).thenReturn(response);
+
+            ResponseEntity<ApiResponse<AuthTokenDTO>> result = authController.login(request);
+
+            assertEquals(HttpStatus.OK, result.getStatusCode());
+            assertEquals(role, result.getBody().data().role());
+        }
     }
 
     @Test

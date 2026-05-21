@@ -114,27 +114,21 @@ class UserJpaAdapterTest {
     }
 
     @Test
-    @DisplayName("Should save user without password (OAuth account)")
-    void testSaveUserWithoutPassword() {
-        UserDTO oauthUserDTO = new UserDTO(
-                userId,
-                "oauthuser",
-                "OAuth User",
-                "BURUH",
-                "oauth@example.com",
-                null,
-                null
-        );
+    @DisplayName("Should update existing user without changing password")
+    void testUpdateExistingUserWithoutPassword() {
+        String hashedPassword = null;
 
-        when(mapper.toDomain(oauthUserDTO)).thenReturn(userDomain);
-        when(mapper.toEntity(userDomain)).thenReturn(userEntity);
-        when(repository.save(userEntity)).thenReturn(userEntity);
+        when(mapper.toDomain(userDTO)).thenReturn(userDomain);
+        when(repository.findById(userId)).thenReturn(Optional.of(userEntity));
+        when(repository.save(any(UserJpaEntity.class))).thenReturn(userEntity);
         when(mapper.toDomain(userEntity)).thenReturn(userDomain);
         when(mapper.toDTO(userDomain)).thenReturn(userDTO);
 
-        UserDTO result = adapter.save(oauthUserDTO, null);
+        UserDTO result = adapter.save(userDTO, hashedPassword);
 
         assertNotNull(result);
+        assertEquals(userId, result.userId());
+        verify(repository, times(1)).findById(userId);
         verify(repository, times(1)).save(any(UserJpaEntity.class));
     }
 
@@ -440,5 +434,104 @@ class UserJpaAdapterTest {
 
         assertNotNull(result);
         verify(repository, times(1)).save(any(UserJpaEntity.class));
+    }
+
+    @Test
+    @DisplayName("Should handle save buruh-mandor assignment when user not found")
+    void testSaveBuruhMandorAssignmentNotFound() {
+        UUID buruhId = UUID.randomUUID();
+        UUID newMandorId = UUID.randomUUID();
+
+        when(repository.findById(buruhId)).thenReturn(Optional.empty());
+
+        adapter.saveBuruhMandorAssignment(buruhId, newMandorId);
+
+        verify(repository, times(1)).findById(buruhId);
+        verify(repository, never()).save(any(UserJpaEntity.class));
+    }
+
+    @Test
+    @DisplayName("Should handle remove buruh-mandor assignment when user not found")
+    void testRemoveBuruhMandorAssignmentNotFound() {
+        UUID buruhId = UUID.randomUUID();
+
+        when(repository.findById(buruhId)).thenReturn(Optional.empty());
+
+        adapter.removeBuruhMandorAssignment(buruhId);
+
+        verify(repository, times(1)).findById(buruhId);
+        verify(repository, never()).save(any(UserJpaEntity.class));
+    }
+
+    @Test
+    @DisplayName("Should find user by mandor ID when buruh is not found")
+    void testFindMandorIdByBuruhIdUserNotFound() {
+        UUID buruhId = UUID.randomUUID();
+
+        when(repository.findById(buruhId)).thenReturn(Optional.empty());
+
+        UUID result = adapter.findMandorIdByBuruhId(buruhId);
+
+        assertNull(result);
+        verify(repository, times(1)).findById(buruhId);
+    }
+
+    @Test
+    @DisplayName("Should return empty list when finding all users with no users in database")
+    void testFindAllEmpty() {
+        when(repository.findAll()).thenReturn(List.of());
+
+        List<UserDTO> result = adapter.findAll();
+
+        assertTrue(result.isEmpty());
+        verify(repository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("Should save new user with MANDOR role and certification")
+    void testSaveNewMandorUser() {
+        String certNumber = "CERT-NEW-12345";
+        String hashedPassword = "hashed_password_new";
+
+        UserDTO mandorDTO = new UserDTO(
+                null,
+                "newmandor",
+                "New Mandor",
+                "MANDOR",
+                "newmandor@example.com",
+                certNumber,
+                null
+        );
+
+        User mandorDomain = new User(
+                null,
+                "newmandor",
+                "newmandor@example.com",
+                "New Mandor",
+                hashedPassword,
+                UserRole.MANDOR,
+                null,
+                certNumber,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        UserJpaEntity savedEntity = new UserJpaEntity();
+        savedEntity.setUserId(userId);
+        savedEntity.setRole("MANDOR");
+
+        when(mapper.toDomain(mandorDTO)).thenReturn(mandorDomain);
+        when(mapper.toEntity(mandorDomain)).thenReturn(userEntity);
+        when(repository.save(userEntity)).thenReturn(savedEntity);
+        when(mapper.toDomain(savedEntity)).thenReturn(mandorDomain);
+        when(mapper.toDTO(mandorDomain)).thenReturn(
+                new UserDTO(userId, "newmandor", "New Mandor", "MANDOR", "newmandor@example.com", certNumber, null)
+        );
+
+        UserDTO result = adapter.save(mandorDTO, hashedPassword);
+
+        assertNotNull(result);
+        assertEquals("MANDOR", result.role());
+        assertEquals(certNumber, result.mandorCertificationNumber());
     }
 }

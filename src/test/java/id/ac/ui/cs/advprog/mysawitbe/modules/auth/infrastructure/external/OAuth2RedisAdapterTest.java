@@ -34,10 +34,13 @@ class OAuth2RedisAdapterTest {
         oauth2RedisAdapter = new OAuth2RedisAdapter(redisTemplate, clientId, clientSecret);
     }
 
+    // ===================== GENERATE STATE TESTS =====================
+
     @Test
     @DisplayName("Should generate random state token")
     void testGenerateState() {
         String state = oauth2RedisAdapter.generateState();
+
         assertNotNull(state);
         assertFalse(state.isEmpty());
         assertTrue(state.length() > 10);
@@ -48,8 +51,32 @@ class OAuth2RedisAdapterTest {
     void testGenerateStateUniqueness() {
         String state1 = oauth2RedisAdapter.generateState();
         String state2 = oauth2RedisAdapter.generateState();
+
         assertNotEquals(state1, state2);
     }
+
+    @Test
+    @DisplayName("Should generate state with URL-safe base64 encoding")
+    void testGenerateStateFormat() {
+        String state = oauth2RedisAdapter.generateState();
+        
+        assertFalse(state.contains("+"), "State should not contain + character");
+        assertFalse(state.contains("/"), "State should not contain / character");
+        assertFalse(state.contains("="), "State should not contain padding");
+    }
+
+    @Test
+    @DisplayName("Should generate state with sufficient entropy")
+    void testStateEntropy() {
+        java.util.Set<String> states = new java.util.HashSet<>();
+        for (int i = 0; i < 100; i++) {
+            states.add(oauth2RedisAdapter.generateState());
+        }
+
+        assertEquals(100, states.size(), "All states should be unique");
+    }
+
+    // ===================== STORE STATE TESTS =====================
 
     @Test
     @DisplayName("Should store state successfully")
@@ -68,11 +95,57 @@ class OAuth2RedisAdapterTest {
     }
 
     @Test
+    @DisplayName("Should store state multiple times with success")
+    void testStoreStateMultipleTimes() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
+
+        for (int i = 0; i < 5; i++) {
+            String state = "state-" + i;
+            boolean result = oauth2RedisAdapter.storeState(state, Duration.ofMinutes(10));
+            assertTrue(result);
+        }
+
+        verify(valueOperations, times(5)).set(anyString(), eq("1"), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("Should store state with different TTLs")
+    void testStoreDifferentTTLs() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
+
+        String state1 = "state-5min";
+        oauth2RedisAdapter.storeState(state1, Duration.ofMinutes(5));
+        verify(valueOperations).set("oauth2:state:" + state1, "1", Duration.ofMinutes(5));
+
+        String state2 = "state-10min";
+        oauth2RedisAdapter.storeState(state2, Duration.ofMinutes(10));
+        verify(valueOperations).set("oauth2:state:" + state2, "1", Duration.ofMinutes(10));
+    }
+
+    @Test
+    @DisplayName("Should handle store state exception gracefully")
+    void testStoreStateWithException() {
+        String state = "test-state";
+        Duration ttl = Duration.ofMinutes(10);
+
+        when(redisTemplate.opsForValue()).thenThrow(new RuntimeException("Redis connection error"));
+
+        boolean result = oauth2RedisAdapter.storeState(state, ttl);
+
+        assertFalse(result);
+    }
+
+    // ===================== VALIDATE AND CONSUME STATE TESTS =====================
+
+    @Test
     @DisplayName("Should validate and consume valid state")
     void testValidateAndConsumeValidState() {
         String state = "valid-state";
 
         when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
+        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state);
 
         boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
 
@@ -100,34 +173,12 @@ class OAuth2RedisAdapterTest {
     void testValidateAndConsumeAlreadyConsumedState() {
         String state = "already-consumed-state";
 
-        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(false);
+        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
+        doReturn(false).when(redisTemplate).delete("oauth2:state:" + state);
 
         boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
 
         assertFalse(result);
-    }
-
-    @Test
-    @DisplayName("Should handle store state exception gracefully")
-    void testStoreStateWithException() {
-        String state = "test-state";
-        Duration ttl = Duration.ofMinutes(10);
-
-        when(redisTemplate.opsForValue()).thenThrow(new RuntimeException("Redis connection error"));
-
-        boolean result = oauth2RedisAdapter.storeState(state, ttl);
-
-        assertFalse(result);
-    }
-
-    @Test
-    @DisplayName("Should generate state with sufficient entropy")
-    void testStateEntropy() {
-        java.util.Set<String> states = new java.util.HashSet<>();
-        for (int i = 0; i < 100; i++) {
-            states.add(oauth2RedisAdapter.generateState());
-        }
-        assertEquals(100, states.size(), "States should be unique");
     }
 
     @Test
@@ -135,38 +186,26 @@ class OAuth2RedisAdapterTest {
     void testMultipleStateValidations() {
         String state1 = "state-1";
         when(redisTemplate.hasKey("oauth2:state:" + state1)).thenReturn(true);
-        
+        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state1);
+
         boolean result1 = oauth2RedisAdapter.validateAndConsumeState(state1);
         assertTrue(result1);
 
         String state2 = "state-2";
         when(redisTemplate.hasKey("oauth2:state:" + state2)).thenReturn(true);
-        
+        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state2);
+
         boolean result2 = oauth2RedisAdapter.validateAndConsumeState(state2);
         assertTrue(result2);
     }
 
     @Test
-    @DisplayName("Should store state with different TTLs")
-    void testStoreDifferentTTLs() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
-
-        String state1 = "state-5min";
-        oauth2RedisAdapter.storeState(state1, Duration.ofMinutes(5));
-        verify(valueOperations).set("oauth2:state:" + state1, "1", Duration.ofMinutes(5));
-
-        String state2 = "state-10min";
-        oauth2RedisAdapter.storeState(state2, Duration.ofMinutes(10));
-        verify(valueOperations).set("oauth2:state:" + state2, "1", Duration.ofMinutes(10));
-    }
-
-    @Test
-    @DisplayName("Should validate state with special characters in key")
+    @DisplayName("Should validate state with special characters")
     void testValidateStateWithSpecialCharacters() {
         String state = "state-with-special-_-chars";
 
         when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(true);
+        doReturn(true).when(redisTemplate).delete("oauth2:state:" + state);
 
         boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
 
@@ -174,46 +213,9 @@ class OAuth2RedisAdapterTest {
     }
 
     @Test
-    @DisplayName("Should generate state with URL-safe base64 encoding")
-    void testGenerateStateFormat() {
-        String state = oauth2RedisAdapter.generateState();
-        
-        assertFalse(state.contains("+"), "State should not contain + character");
-        assertFalse(state.contains("/"), "State should not contain / character");
-        assertFalse(state.contains("="), "State should not contain padding");
-    }
-
-    @Test
-    @DisplayName("Should store state multiple times with success")
-    void testStoreStateMultipleTimes() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
-
-        for (int i = 0; i < 5; i++) {
-            String state = "state-" + i;
-            boolean result = oauth2RedisAdapter.storeState(state, Duration.ofMinutes(10));
-            assertTrue(result);
-        }
-
-        verify(valueOperations, times(5)).set(anyString(), eq("1"), any(Duration.class));
-    }
-
-    @Test
-    @DisplayName("Should handle state key prefix correctly")
-    void testStateKeyPrefixHandling() {
-        String state = "test-state-prefix";
-        when(redisTemplate.hasKey(contains(state))).thenReturn(true);
-
-        oauth2RedisAdapter.validateAndConsumeState(state);
-
-        verify(redisTemplate).hasKey("oauth2:state:" + state);
-    }
-
-    @Test
-    @DisplayName("Should return false when state validation hasKey returns null")
+    @DisplayName("Should handle null return from Redis hasKey")
     void testValidateStateWithNullFromRedis() {
-        String state = "null-state";
-
+        String state = "test-state";
         when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(null);
 
         boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
@@ -222,17 +224,15 @@ class OAuth2RedisAdapterTest {
     }
 
     @Test
-    @DisplayName("Should handle store state with empty state string")
-    void testStoreStateWithEmptyString() {
-        String state = "";
-        Duration ttl = Duration.ofMinutes(10);
+    @DisplayName("Should handle false return from Redis hasKey")
+    void testValidateStateWithFalseFromRedis() {
+        String state = "test-state";
+        when(redisTemplate.hasKey("oauth2:state:" + state)).thenReturn(Boolean.FALSE);
 
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        doNothing().when(valueOperations).set(anyString(), anyString(), any(Duration.class));
+        boolean result = oauth2RedisAdapter.validateAndConsumeState(state);
 
-        boolean result = oauth2RedisAdapter.storeState(state, ttl);
-
-        assertTrue(result);
+        assertFalse(result);
     }
 }
+
 

@@ -321,6 +321,103 @@ class UserMapperTest {
     }
 
     @Test
+    @DisplayName("Should map all role types to domain and back")
+    void testMapAllRoleTypes() {
+        String[] roles = {"BURUH", "MANDOR", "ADMIN", "SUPIR"};
+        UUID userId = UUID.randomUUID();
+
+        for (String role : roles) {
+            UserDTO dto = new UserDTO(
+                    userId,
+                    "user-" + role.toLowerCase(),
+                    "User " + role,
+                    role,
+                    role.toLowerCase() + "@example.com",
+                    "MANDOR".equals(role) ? "CERT-001" : null,
+                    null
+            );
+
+            User user = userMapper.toDomain(dto);
+            UserDTO mappedBack = userMapper.toDTO(user);
+
+            assertEquals(role, user.getRole().name());
+            assertEquals(role, mappedBack.role());
+        }
+    }
+
+    @Test
+    @DisplayName("Should map entity with all roles correctly")
+    void testMapEntityWithAllRoles() {
+        LocalDateTime now = LocalDateTime.now();
+        String[] roles = {"BURUH", "MANDOR", "ADMIN", "SUPIR"};
+
+        for (String role : roles) {
+            UserJpaEntity entity = new UserJpaEntity();
+            entity.setUserId(UUID.randomUUID());
+            entity.setUsername("user-" + role.toLowerCase());
+            entity.setEmail(role.toLowerCase() + "@example.com");
+            entity.setName("User " + role);
+            entity.setPassword("hashed");
+            entity.setRole(role);
+            entity.setMandorCertificationNumber("MANDOR".equals(role) ? "CERT-001" : null);
+            entity.setMandorId(null);
+            entity.setCreatedAt(now);
+            entity.setUpdatedAt(now);
+
+            User user = userMapper.toDomain(entity);
+
+            assertEquals(UserRole.valueOf(role), user.getRole());
+        }
+    }
+
+    @Test
+    @DisplayName("Should map DTO to domain preserving email")
+    void testMapPreservingEmail() {
+        UUID userId = UUID.randomUUID();
+        String email = "user+tag@example.co.uk";
+        
+        UserDTO dto = new UserDTO(
+                userId,
+                "testuser",
+                "Test User",
+                "BURUH",
+                email,
+                null,
+                null
+        );
+
+        User user = userMapper.toDomain(dto);
+
+        assertEquals(email, user.getEmail());
+    }
+
+    @Test
+    @DisplayName("Should map entity to DTO with proper role conversion")
+    void testMapEntityToDTOWithRoleConversion() {
+        UUID userId = UUID.randomUUID();
+        UUID mandorId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        
+        UserJpaEntity entity = new UserJpaEntity();
+        entity.setUserId(userId);
+        entity.setUsername("mandor");
+        entity.setEmail("mandor@example.com");
+        entity.setName("Mandor User");
+        entity.setPassword("hashed");
+        entity.setRole("MANDOR");
+        entity.setMandorCertificationNumber("CERT-12345");
+        entity.setMandorId(mandorId);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+
+        User user = userMapper.toDomain(entity);
+        UserDTO dto = userMapper.toDTO(user);
+
+        assertEquals("MANDOR", dto.role());
+        assertEquals("CERT-12345", dto.mandorCertificationNumber());
+        assertEquals(mandorId, dto.mandorId());
+    }
+
     @DisplayName("Should map DTO with special characters in email")
     void testMapSpecialCharactersInEmail() {
         UUID userId = UUID.randomUUID();

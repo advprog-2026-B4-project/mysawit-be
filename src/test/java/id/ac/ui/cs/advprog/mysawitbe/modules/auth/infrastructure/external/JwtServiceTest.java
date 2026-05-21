@@ -187,6 +187,61 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("Should reject registration token with blank email")
+    void testExtractOAuthWithBlankEmail() {
+        String email = "   ";
+        String name = "Test User";
+        
+        String token = jwtService.generateOAuthRegistrationToken(email, name);
+        
+        assertThrows(IllegalArgumentException.class, () -> 
+            jwtService.extractOAuthPendingRegistration(token),
+            "Should reject blank email"
+        );
+    }
+
+    @Test
+    @DisplayName("Should reject registration token with blank name")
+    void testExtractOAuthWithBlankName() {
+        String email = "test@example.com";
+        String name = "   ";
+        
+        String token = jwtService.generateOAuthRegistrationToken(email, name);
+        
+        assertThrows(IllegalArgumentException.class, () -> 
+            jwtService.extractOAuthPendingRegistration(token),
+            "Should reject blank name"
+        );
+    }
+
+    @Test
+    @DisplayName("Should reject registration token with null email")
+    void testExtractOAuthWithNullEmail() {
+        String name = "Test User";
+        
+        // When creating token with null email, it will still create token
+        // But extraction should fail
+        String token = jwtService.generateOAuthRegistrationToken(null, name);
+        
+        assertThrows(Exception.class, () -> 
+            jwtService.extractOAuthPendingRegistration(token)
+        );
+    }
+
+    @Test
+    @DisplayName("Should reject registration token with null name")
+    void testExtractOAuthWithNullName() {
+        String email = "test@example.com";
+        
+        // When creating token with null name, extraction should fail
+        String token = jwtService.generateOAuthRegistrationToken(email, null);
+        
+        assertThrows(Exception.class, () -> 
+            jwtService.extractOAuthPendingRegistration(token)
+        );
+    }
+
+    @Test
     @DisplayName("Should work with UUID in different formats")
     void testTokenWithUUID() {
         String userId = "12345678-1234-1234-1234-123456789012";

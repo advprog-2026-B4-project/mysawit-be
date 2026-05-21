@@ -109,7 +109,9 @@ class PembayaranServiceTest {
         assertThat(saved.referenceType()).isEqualTo("PENGIRIMAN");
         assertThat(saved.weight()).isEqualTo(320000);
         assertThat(saved.wageRateApplied()).isEqualTo(8);
-        assertThat(saved.netAmount()).isEqualTo(2560);
+
+        assertThat(saved.netAmount()).isEqualTo(2560000);
+
         assertThat(saved.status()).isEqualTo("PENDING");
     }
 
@@ -781,7 +783,9 @@ class PembayaranServiceTest {
 
         ArgumentCaptor<PayrollDTO> captor = ArgumentCaptor.forClass(PayrollDTO.class);
         verify(payrollRepository).save(captor.capture());
-        assertThat(captor.getValue().netAmount()).isEqualTo(800);
+
+        assertThat(captor.getValue().netAmount()).isEqualTo(800000);
+
     }
 
     @Test
@@ -820,7 +824,9 @@ class PembayaranServiceTest {
         assertThat(saved.referenceId()).isEqualTo(panenId);
         assertThat(saved.referenceType()).isEqualTo("PANEN");
         assertThat(saved.weight()).isEqualTo(50000);
-        assertThat(saved.netAmount()).isEqualTo(400);
+
+        assertThat(saved.netAmount()).isEqualTo(400000);
+
         assertThat(saved.status()).isEqualTo("PENDING");
     }
 
@@ -1227,3 +1233,4 @@ class PembayaranServiceTest {
                 .hasMessage("Admin id is required");
     }
 }
+

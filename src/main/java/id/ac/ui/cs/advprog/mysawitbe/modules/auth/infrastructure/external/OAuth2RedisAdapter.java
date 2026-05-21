@@ -54,8 +54,8 @@ public class OAuth2RedisAdapter implements OAuth2Port {
         String key = STATE_PREFIX + state;
         Boolean exists = redisTemplate.hasKey(key);
         if (Boolean.TRUE.equals(exists)) {
-            redisTemplate.delete(key);
-            return true;
+            Boolean deleted = redisTemplate.delete(key);
+            return Boolean.TRUE.equals(deleted);
         }
         return false;
     }

@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,7 +40,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String userId = jwtService.extractUserId(token);
                 String role   = jwtService.extractRole(token);
 
-                // Expose userId as request attribute for controllers
+                MDC.put("userId", userId);
+                MDC.put("role", role);
+
                 request.setAttribute("userId", UUID.fromString(userId));
 
                 var auth = new UsernamePasswordAuthenticationToken(
@@ -51,6 +54,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            MDC.remove("userId");
+            MDC.remove("role");
+        }
     }
 }

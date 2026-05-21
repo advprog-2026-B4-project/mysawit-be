@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.mysawitbe.common.exception;
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ApiResponse;
 import id.ac.ui.cs.advprog.mysawitbe.common.dto.ValidationErrorResponse;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleEntityNotFound(EntityNotFoundException ex) {
@@ -62,6 +66,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ArithmeticException.class, NumberFormatException.class})
     public ResponseEntity<ApiResponse<Void>> handleAmountParseError(RuntimeException ex) {
+        log.warn("Payment amount parse error: {}", ex.getMessage());
         return ResponseEntity
             .status(422)
             .body(ApiResponse.error("Invalid payment amount: " + ex.getMessage()));
@@ -69,6 +74,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(ApiResponse.error("An unexpected error occurred: " + ex.getMessage()));

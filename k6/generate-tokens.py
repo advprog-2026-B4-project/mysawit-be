@@ -78,25 +78,40 @@ except psycopg2.OperationalError as e:
 cur = conn.cursor()
 
 # Query all load test users with their kebun_id and mandor_id
-cur.execute("""
-    SELECT
-        u.user_id::TEXT,
-        u.role,
-        COALESCE(
-            CASE u.role
-                WHEN 'MANDOR' THEN (SELECT k.kebun_id::TEXT FROM kebun k WHERE k.mandor_id = u.user_id LIMIT 1)
-                WHEN 'BURUH'  THEN (SELECT k.kebun_id::TEXT FROM kebun k WHERE k.mandor_id = u.mandor_id LIMIT 1)
-                WHEN 'SUPIR'  THEN (SELECT k.kebun_id::TEXT FROM kebun k
-                                    JOIN kebun_supir ks ON ks.kebun_id = k.kebun_id
-                                    WHERE ks.supir_id = u.user_id LIMIT 1)
-            END,
-        '') AS kebun_id,
-        COALESCE(u.mandor_id::TEXT, '') AS mandor_id
-    FROM users u
-    WHERE u.role IN ('BURUH', 'SUPIR', 'MANDOR')
-      AND (u.username LIKE 'buruh_%' OR u.username LIKE 'supir_%' OR u.username LIKE 'mandor_%')
-    ORDER BY u.role, u.username
-""")
+try:
+    cur.execute("""
+        SELECT
+            u.user_id::TEXT,
+            u.role,
+            COALESCE(
+                CASE u.role
+                    WHEN 'MANDOR' THEN (SELECT k.kebun_id::TEXT FROM public.kebun k WHERE k.mandor_id = u.user_id LIMIT 1)
+                    WHEN 'BURUH'  THEN (SELECT k.kebun_id::TEXT FROM public.kebun k WHERE k.mandor_id = u.mandor_id LIMIT 1)
+                    WHEN 'SUPIR'  THEN (SELECT k.kebun_id::TEXT FROM public.kebun k
+                                        JOIN public.kebun_supir ks ON ks.kebun_id = k.kebun_id
+                                        WHERE ks.supir_id = u.user_id LIMIT 1)
+                END,
+            '') AS kebun_id,
+            COALESCE(u.mandor_id::TEXT, '') AS mandor_id
+        FROM public.users u
+        WHERE u.role IN ('BURUH', 'SUPIR', 'MANDOR')
+          AND (u.username LIKE 'buruh_%' OR u.username LIKE 'supir_%' OR u.username LIKE 'mandor_%')
+        ORDER BY u.role, u.username
+    """)
+except psycopg2.errors.UndefinedTable as e:
+    # Provide a helpful hint when migrations haven't been applied or schemas differ.
+    conn.rollback()
+    try:
+        cur.execute("SELECT schemaname FROM pg_tables WHERE tablename = 'users' ORDER BY schemaname")
+        found = [r[0] for r in cur.fetchall()]
+    except Exception:
+        found = []
+    msg = f"[ERROR] Missing table: {e}"\
+          + (f"\n[HINT] Found 'users' in schemas: {found}" if found else "\n[HINT] No 'users' table found. Did you run Flyway migrations / start the backend once?")
+    print(msg, file=sys.stderr)
+    cur.close()
+    conn.close()
+    sys.exit(1)
 
 rows = cur.fetchall()
 cur.close()

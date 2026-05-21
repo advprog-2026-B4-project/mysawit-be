@@ -58,8 +58,6 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    schemas: auth,kebun,panen,pembayaran,pengiriman,notification,common
-    create-schemas: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}

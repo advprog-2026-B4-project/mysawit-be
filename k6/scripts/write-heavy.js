@@ -18,9 +18,11 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { SharedArray } from 'k6/data';
+import exec from 'k6/execution';
 import { Rate, Trend, Counter } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const IS_DRY_RUN = (__ENV.DRY_RUN || '').toLowerCase() === '1' || (__ENV.DRY_RUN || '').toLowerCase() === 'true';
 
 // Custom metrics
 const serverErrors   = new Rate('server_errors');
@@ -39,29 +41,43 @@ const buruhUsers = new SharedArray('buruh', function () {
     .filter(u => u.role === 'BURUH');
 });
 
-export const options = {
-  scenarios: {
-    write_panen_peak: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '2m', target: 500 },  // ramp-up: JVM JIT warms up here
-        { duration: '5m', target: 500 },  // plateau: collect primary metrics
-        { duration: '1m', target: 0   },  // ramp-down
-      ],
-      gracefulRampDown: '30s',
-    },
-  },
-  thresholds: {
-    http_req_duration:          ['p(95)<1000'],
-    server_errors:              ['rate<0.01'],
-    http_req_duration: [{ threshold: 'p(95)<1000', abortOnFail: false }],
-  },
-  summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
-};
+export const options = IS_DRY_RUN
+  ? {
+      scenarios: {
+        write_panen_peak: {
+          executor: 'constant-vus',
+          vus: 1,
+          duration: '10s',
+        },
+      },
+      thresholds: {},
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    }
+  : {
+      scenarios: {
+        write_panen_peak: {
+          // Goal: simulate a peak-hour burst where each BURUH submits once.
+          // Using shared-iterations + global iteration index avoids spamming the same
+          // (buruh_id, harvest_date) and triggering expected 409 conflicts.
+          executor: 'shared-iterations',
+          vus: 500,
+          iterations: buruhUsers.length,
+          maxDuration: '8m',
+        },
+      },
+      thresholds: {
+        http_req_duration: ['p(95)<1000'],
+        server_errors: ['rate<0.01'],
+        http_req_duration: [{ threshold: 'p(95)<1000', abortOnFail: false }],
+      },
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    };
 
 export default function () {
-  const user = buruhUsers[(__VU - 1) % buruhUsers.length];
+  // Pick a globally unique user per iteration (across all VUs).
+  // This keeps the test focused on write throughput, not 409 conflict churn.
+  const idx = exec.scenario.iterationInTest % buruhUsers.length;
+  const user = buruhUsers[idx];
 
   const payload = JSON.stringify({
     weight:      Math.floor(50 + Math.random() * 250),

@@ -29,6 +29,7 @@ import { SharedArray } from 'k6/data';
 import { Rate, Counter } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const IS_DRY_RUN = (__ENV.DRY_RUN || '').toLowerCase() === '1' || (__ENV.DRY_RUN || '').toLowerCase() === 'true';
 
 const serverErrors   = new Rate('server_errors');
 const approvedTotal  = new Counter('panen_approved_total');
@@ -46,20 +47,32 @@ const mandorUsers = new SharedArray('mandors', function () {
     .filter(u => u.role === 'MANDOR');
 });
 
-export const options = {
-  scenarios: {
-    async_bulk_approval: {
-      executor: 'constant-vus',
-      vus:      20,
-      duration: '30m',
-    },
-  },
-  thresholds: {
-    http_req_duration: ['p(95)<500'],
-    server_errors:     ['rate<0.01'],
-  },
-  summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
-};
+export const options = IS_DRY_RUN
+  ? {
+      scenarios: {
+        async_bulk_approval: {
+          executor: 'constant-vus',
+          vus: 1,
+          duration: '10s',
+        },
+      },
+      thresholds: {},
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    }
+  : {
+      scenarios: {
+        async_bulk_approval: {
+          executor: 'constant-vus',
+          vus: 20,
+          duration: '30m',
+        },
+      },
+      thresholds: {
+        http_req_duration: ['p(95)<500'],
+        server_errors: ['rate<0.01'],
+      },
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    };
 
 export default function () {
   const mandor = mandorUsers[(__VU - 1) % mandorUsers.length];

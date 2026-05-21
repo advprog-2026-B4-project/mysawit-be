@@ -12,7 +12,7 @@ import lombok.Setter;
  * Lives only in the infrastructure layer - never exposed to the domain or application layers.
  */
 @Entity
-@Table(name = "variables", schema = "pembayaran")
+@Table(name = "variables")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -34,8 +34,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
 
-    // Spring Modulith
-    implementation("org.springframework.modulith:spring-modulith-starter-jpa:2.0.0")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("jakarta.validation:jakarta.validation-api")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")

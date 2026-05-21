@@ -16,6 +16,7 @@ import { SharedArray } from 'k6/data';
 import { Rate } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const IS_DRY_RUN = (__ENV.DRY_RUN || '').toLowerCase() === '1' || (__ENV.DRY_RUN || '').toLowerCase() === 'true';
 
 const serverErrors = new Rate('server_errors');
 
@@ -30,25 +31,37 @@ const allUsers = new SharedArray('users', function () {
     });
 });
 
-export const options = {
-  scenarios: {
-    dashboard_read: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '1m', target: 100 },
-        { duration: '5m', target: 100 },
-        { duration: '1m', target: 0   },
-      ],
-      gracefulRampDown: '30s',
-    },
-  },
-  thresholds: {
-    http_req_duration: ['p(95)<300'],
-    server_errors:     ['rate<0.01'],
-  },
-  summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
-};
+export const options = IS_DRY_RUN
+  ? {
+      scenarios: {
+        dashboard_read: {
+          executor: 'constant-vus',
+          vus: 1,
+          duration: '10s',
+        },
+      },
+      thresholds: {},
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    }
+  : {
+      scenarios: {
+        dashboard_read: {
+          executor: 'ramping-vus',
+          startVUs: 0,
+          stages: [
+            { duration: '1m', target: 100 },
+            { duration: '5m', target: 100 },
+            { duration: '1m', target: 0 },
+          ],
+          gracefulRampDown: '30s',
+        },
+      },
+      thresholds: {
+        http_req_duration: ['p(95)<300'],
+        server_errors: ['rate<0.01'],
+      },
+      summaryTrendStats: ['min', 'med', 'avg', 'p(90)', 'p(95)', 'p(99)', 'max'],
+    };
 
 export default function () {
   const user = allUsers[(__VU - 1) % allUsers.length];

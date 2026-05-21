@@ -18,7 +18,7 @@ import lombok.Setter;
 import java.util.UUID;
 
 @Entity
-@Table(name = "pengiriman_panen_item", schema = "pengiriman")
+@Table(name = "pengiriman_panen_item")
 @Getter
 @Setter
 @NoArgsConstructor

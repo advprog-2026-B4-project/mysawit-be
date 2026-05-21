@@ -71,17 +71,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         Bucket bucket = switch (path) {
             case LOGIN_PATH    -> proxyManager.builder()
-                    .withKey(KEY_LOGIN + clientIp(request))
-                    .withConfiguration(loginConfig)
-                    .build();
+                    .build(KEY_LOGIN + clientIp(request), loginConfig);
             case REGISTER_PATH -> proxyManager.builder()
-                    .withKey(KEY_REGISTER + clientIp(request))
-                    .withConfiguration(registerConfig)
-                    .build();
+                    .build(KEY_REGISTER + clientIp(request), registerConfig);
             case MIDTRANS_PATH -> proxyManager.builder()
-                    .withKey(KEY_MIDTRANS)
-                    .withConfiguration(midtransConfig)
-                    .build();
+                    .build(KEY_MIDTRANS, midtransConfig);
             default            -> null;
         };
 

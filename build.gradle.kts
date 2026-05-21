@@ -3,6 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
+    id("info.solidsoft.pitest") version "1.15.0"
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -58,8 +59,9 @@ dependencies {
     // Structured JSON logging
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")
 
-    // Rate limiting (local in-memory; single-instance monolith doesn't need distributed state)
+    // Rate limiting (Redis-backed via bucket4j-redis + Lettuce)
     implementation("com.bucket4j:bucket4j-core:8.10.1")
+    implementation("com.bucket4j:bucket4j-redis:8.10.1")
 
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.6.3")
@@ -135,6 +137,29 @@ tasks.register<JavaExec>("changeAdminPassword") {
     environment("DB_URL",      System.getenv("DB_URL")      ?: "jdbc:postgresql://localhost:5432/mysawit")
     environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")
     environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
+}
+
+pitest {
+    junit5PluginVersion.set("1.2.1")
+    targetClasses.set(listOf(
+        "id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.*",
+    ))
+    targetTests.set(listOf(
+        "id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.service.*",
+        "id.ac.ui.cs.advprog.mysawitbe.modules.kebun.*",
+    ))
+    mutationThreshold.set(60)
+    coverageThreshold.set(80)
+    outputFormats.set(listOf("HTML"))
+    threads.set(4)
+    timestampedReports.set(false)
 }
 
 tasks.register<JavaExec>("seedPayrollTestData") {

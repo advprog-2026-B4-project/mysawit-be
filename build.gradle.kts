@@ -3,7 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
-    // id("info.solidsoft.pitest") version "1.15.0"  // disabled: incompatible with Gradle 9.x
+
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -138,30 +138,6 @@ tasks.register<JavaExec>("changeAdminPassword") {
     environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")
     environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
 }
-
-// pitest disabled: plugin incompatible with Gradle 9.x
-// pitest {
-//     junit5PluginVersion.set("1.2.1")
-//     targetClasses.set(listOf(
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.*",
-//     ))
-//     targetTests.set(listOf(
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.service.*",
-//         "id.ac.ui.cs.advprog.mysawitbe.modules.kebun.*",
-//     ))
-//     mutationThreshold.set(60)
-//     coverageThreshold.set(80)
-//     outputFormats.set(listOf("HTML"))
-//     threads.set(4)
-//     timestampedReports.set(false)
-// }
 
 tasks.register<JavaExec>("seedPayrollTestData") {
     group       = "seed"

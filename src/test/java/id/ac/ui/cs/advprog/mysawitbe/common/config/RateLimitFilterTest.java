@@ -52,8 +52,7 @@ class RateLimitFilterTest {
 
     private StringWriter responseWriter;
 
-    // Simulates Redis-backed state: buckets are cached by key so repeated
-    // requests with the same key hit the same bucket (shared state).
+    // Cached buckets by Redis key — simulates shared Redis state
     private final ConcurrentMap<String, Bucket> bucketStore = new ConcurrentHashMap<>();
 
     @BeforeEach
@@ -61,38 +60,23 @@ class RateLimitFilterTest {
         responseWriter = new StringWriter();
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
-        // Wire proxyManager.builder() to return mock builders that delegate
-        // to in-memory buckets keyed by the Redis key string.
-        when(proxyManager.builder()).thenAnswer(invocation -> {
-            // Captured state for this builder instance
-            final BucketConfiguration[] configHolder = new BucketConfiguration[1];
-            final String[] keyHolder = new String[1];
+        when(proxyManager.builder()).thenAnswer(inv -> {
+            var configHolder = new BucketConfiguration[1];
+            var keyHolder = new String[1];
 
             SuppliedBucketBuilder mockBuilder = org.mockito.Mockito.mock(SuppliedBucketBuilder.class);
-            when(mockBuilder.withKey(any())).thenAnswer(args -> {
-                keyHolder[0] = (String) args.getArgument(0);
-                return mockBuilder;
-            });
-            doAnswer(args -> {
-                configHolder[0] = args.getArgument(0);
-                return mockBuilder;
-            }).when(mockBuilder).withConfiguration(any(BucketConfiguration.class));
-
-            when(mockBuilder.build()).thenAnswer(args -> {
+            when(mockBuilder.withKey(any())).thenAnswer(a -> { keyHolder[0] = (String) a.getArgument(0); return mockBuilder; });
+            doAnswer(a -> { configHolder[0] = a.getArgument(0); return mockBuilder; }).when(mockBuilder).withConfiguration(any(BucketConfiguration.class));
+            when(mockBuilder.build()).thenAnswer(a -> {
                 String key = keyHolder[0] != null ? keyHolder[0] : "default";
                 return bucketStore.computeIfAbsent(key, k -> {
-                    BucketConfiguration cfg = configHolder[0];
-                    if (cfg == null) {
-                        // Shouldn't happen; provide a generous fallback
-                        cfg = BucketConfiguration.builder()
-                                .addLimit(Bandwidth.builder().capacity(100)
-                                        .refillGreedy(100, Duration.ofMinutes(1)).build())
-                                .build();
-                    }
+                    var cfg = configHolder[0];
+                    if (cfg == null) cfg = BucketConfiguration.builder()
+                            .addLimit(Bandwidth.builder().capacity(100).refillGreedy(100, Duration.ofMinutes(1)).build())
+                            .build();
                     return Bucket.builder().withConfiguration(cfg).build();
                 });
             });
-
             return mockBuilder;
         });
     }
@@ -103,9 +87,7 @@ class RateLimitFilterTest {
         @Test
         void doFilterInternal_disabled_alwaysPassesThrough() throws ServletException, IOException {
             RateLimitFilter filter = new RateLimitFilter(false, proxyManager);
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -113,9 +95,7 @@ class RateLimitFilterTest {
         void doFilterInternal_getRequest_bypassesRateLimit() throws ServletException, IOException {
             RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("GET");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -123,9 +103,7 @@ class RateLimitFilterTest {
         void doFilterInternal_putRequest_bypassesRateLimit() throws ServletException, IOException {
             RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("PUT");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -134,9 +112,7 @@ class RateLimitFilterTest {
             RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/panen");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -146,9 +122,7 @@ class RateLimitFilterTest {
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("192.168.1.1");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -158,9 +132,7 @@ class RateLimitFilterTest {
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/auth/register");
             when(request.getRemoteAddr()).thenReturn("192.168.1.2");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -169,9 +141,7 @@ class RateLimitFilterTest {
             RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/pembayaran/wallet/midtrans-callback");
-
             filter.doFilterInternal(request, response, filterChain);
-
             verify(filterChain).doFilter(request, response);
         }
 
@@ -182,7 +152,6 @@ class RateLimitFilterTest {
             when(request.getRequestURI()).thenReturn("/api/auth/login");
             when(request.getRemoteAddr()).thenReturn("192.168.1.3");
 
-            // Exhaust the bucket (login: 10 requests / 15 min)
             for (int i = 0; i < 10; i++) {
                 filter.doFilterInternal(request, response, filterChain);
             }
@@ -197,8 +166,7 @@ class RateLimitFilterTest {
 
             verify(filterChain, never()).doFilter(request, response);
             verify(response).setStatus(429);
-            verify(response).setHeader(eq("Retry-After"),
-                    anyString());
+            verify(response).setHeader(eq("Retry-After"), anyString());
         }
 
         @Test
@@ -206,8 +174,6 @@ class RateLimitFilterTest {
             RateLimitFilter filter = new RateLimitFilter(true, proxyManager);
             when(request.getMethod()).thenReturn("POST");
             when(request.getRequestURI()).thenReturn("/api/pembayaran/wallet/midtrans-callback");
-
-            // Midtrans: 60 req/min. First request should pass.
             filter.doFilterInternal(request, response, filterChain);
             verify(filterChain).doFilter(request, response);
         }

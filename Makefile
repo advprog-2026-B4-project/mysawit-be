@@ -28,13 +28,15 @@ export
 # Default Gradle flags: daemon for speed, parallel for multi-core
 GRADLE_FLAGS ?= --daemon --parallel
 
+.DEFAULT_GOAL := help
+
 .PHONY: help
 
 help: ## Show this help
 	@echo "MySawit Backend — available targets:"
 	@echo ""
-	@sed -n 's/^\([a-zA-Z0-9_-]*\).*## \(.*\)/\1  \2/p' $(MAKEFILE_LIST) \
-	  | awk -F '  ' '{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
+	@awk -F ':.*## ' \
+	  '/^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # ===========================================================================
 # Development

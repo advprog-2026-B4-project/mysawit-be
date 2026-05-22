@@ -16,11 +16,28 @@ services:
   #  alertmanager:
   #    ...
 
-  # ── loki + alloy disabled until bind mount issue resolved ─────────────────
-  #  loki:
-  #    ...
-  #  alloy:
-  #    ...
+  loki:
+    build:
+      context: .
+      dockerfile: Dockerfile.loki
+    restart: unless-stopped
+    volumes:
+      - loki_data:/loki
+    networks:
+      - coolify
+
+  alloy:
+    build:
+      context: .
+      dockerfile: Dockerfile.alloy
+    restart: unless-stopped
+    volumes:
+      - app_logs:/var/log/mysawit:ro
+      - alloy_data:/var/lib/alloy/data
+    networks:
+      - coolify
+    depends_on:
+      - loki
 
   grafana:
     image: grafana/grafana:11.3.0
@@ -41,10 +58,15 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
+      loki:
+        condition: service_started
 
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
+  alloy_data:
+  app_logs:
 
 networks:
   coolify:

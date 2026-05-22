@@ -1,10 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -148,25 +145,39 @@ public class PanenQueryImpl implements PanenQueryUseCase {
     public PanenPageDTO listPanenForAdmin(String buruhName, LocalDate startDate, LocalDate endDate, String status, int page, int size) {
         PanenPageDTO panenPage = repositoryPort.findAllWithFiltersPaginated(status, startDate, endDate, page, size);
 
+        if (panenPage.items().isEmpty()) {
+            return panenPage;
+        }
+        Set<UUID> uniqueBuruhIds = panenPage.items().stream()
+            .map(PanenDTO::buruhId)
+            .collect(Collectors.toSet());
+
+        Map<UUID, String> buruhNameMap = new HashMap<>();
+        for (UUID id : uniqueBuruhIds) {
+            String nama = userQueryUseCase.getUserById(id).name();
+            buruhNameMap.put(id, nama);
+        }
+
         List<PanenDTO> enriched = panenPage.items().stream()
-                .map(panen -> {
-                    String namaAsli = userQueryUseCase.getUserById(panen.buruhId()).name();
-                    return new PanenDTO(
-                            panen.panenId(), panen.buruhId(), namaAsli,
-                            panen.kebunId(), panen.description(), panen.weight(),
-                            panen.status(), panen.rejectionReason(),
-                            panen.photos(),
-                            panen.timestamp()
-                    );
-                })
-                .filter(panen -> {
-                    if (buruhName == null || buruhName.isBlank()) return true;
-                    return panen.buruhName().toLowerCase().contains(buruhName.trim().toLowerCase());
-                })
-                .toList();
+            .map(panen -> {
+                String namaAsli = buruhNameMap.get(panen.buruhId());
+
+                return new PanenDTO(
+                    panen.panenId(), panen.buruhId(), namaAsli,
+                    panen.kebunId(), panen.description(), panen.weight(),
+                    panen.status(), panen.rejectionReason(),
+                    panen.photos(),
+                    panen.timestamp()
+                );
+            })
+            .filter(panen -> {
+                if (buruhName == null || buruhName.isBlank()) return true;
+                return panen.buruhName().toLowerCase().contains(buruhName.trim().toLowerCase());
+            })
+            .toList();
 
         return new PanenPageDTO(enriched, panenPage.page(), panenPage.size(),
-                panenPage.totalElements(), panenPage.totalPages(),
-                panenPage.hasNext(), panenPage.hasPrevious());
+            panenPage.totalElements(), panenPage.totalPages(),
+            panenPage.hasNext(), panenPage.hasPrevious());
     }
 }

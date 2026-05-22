@@ -130,8 +130,8 @@ INSERT INTO payrolls (
   weight, wage_rate_applied, net_amount, status, processed_at, created_at
 )
 SELECT gen_random_uuid(),
-       hr.buruh_id, 'BURUH', hr.id, 'HARVEST',
-       hr.weight, 10000, hr.weight * 10000 / 1000,
+       hr.buruh_id, 'BURUH', hr.id, 'PANEN',
+       hr.weight, 10000, hr.weight * 10000,
        'APPROVED',
        hr.created_at + INTERVAL '1 hour',
        hr.created_at

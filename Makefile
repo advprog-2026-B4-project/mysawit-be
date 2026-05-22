@@ -69,10 +69,10 @@ lint: ## Check code style with Checkstyle (if configured)
 # ===========================================================================
 # Data seeding & admin
 # ===========================================================================
-.PHONY: seed-payroll change-admin-password
+.PHONY: seed change-admin-password
 
-seed-payroll: ## Seed payroll test data
-	$(GRADLE) seedPayrollTestData
+seed: ## Seed dummy data for all modules (kebun, panen, pengiriman, payroll, wallet, notifications)
+	$(GRADLE) seedDummyData
 
 change-admin-password: ## Change admin password — make change-admin-password PASS=newpass
 ifndef PASS

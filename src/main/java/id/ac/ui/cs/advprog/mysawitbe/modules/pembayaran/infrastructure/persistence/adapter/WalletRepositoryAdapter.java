@@ -122,6 +122,11 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 		return walletMapper.toBalanceDto(savedWallet);
 	}
 
+	@Override
+	public long sumAllWorkerBalances() {
+		return walletJpaRepository.sumAllBalances();
+	}
+
 	@Recover
 	public WalletBalanceDTO recoverFromOptimisticLock(ObjectOptimisticLockingFailureException ex,
 			UUID userId, long amount, UUID payrollId) {

@@ -79,6 +79,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("io.micrometer:micrometer-registry-prometheus")
 
+    // AOP (for PanenMetricsAspect)
+    implementation("org.springframework.boot:spring-boot-starter-aop")
+
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 

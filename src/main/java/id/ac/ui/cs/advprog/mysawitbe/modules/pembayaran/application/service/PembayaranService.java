@@ -27,6 +27,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -71,6 +75,30 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final UserQueryUseCase userQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
 	private final DomainEventPublisher eventPublisher;
+	private final MeterRegistry meterRegistry;
+
+	private Counter payrollApprovedCounter;
+	private Counter payrollRejectedCounter;
+
+	@PostConstruct
+	void initMetrics() {
+		Gauge.builder("payroll.pending.count", payrollRepository, PayrollRepositoryPort::countPendingPayrolls)
+				.description("Jumlah payroll berstatus PENDING — alert bila menumpuk")
+				.register(meterRegistry);
+
+		Gauge.builder("wallet.balance.total.rupiah", walletRepository, WalletRepositoryPort::sumAllWorkerBalances)
+				.description("Total saldo seluruh wallet pekerja (Rupiah) — monitoring kewajiban finansial")
+				.baseUnit("rupiah")
+				.register(meterRegistry);
+
+		payrollApprovedCounter = Counter.builder("payroll.approved.total")
+				.description("Jumlah payroll disetujui admin (cumulative)")
+				.register(meterRegistry);
+
+		payrollRejectedCounter = Counter.builder("payroll.rejected.total")
+				.description("Jumlah payroll ditolak admin (cumulative)")
+				.register(meterRegistry);
+	}
 
 	@Override
 	public PayrollStatusDTO getPayrollStatus(UUID payrollId) {
@@ -251,6 +279,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		PayrollDTO saved = payrollRepository.save(approved);
 		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
 		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		payrollApprovedCounter.increment();
 		return saved;
 	}
 
@@ -282,6 +311,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 		PayrollDTO saved = payrollRepository.save(rejected);
 		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_REJECTED));
+		payrollRejectedCounter.increment();
 		return saved;
 	}
 

@@ -177,4 +177,10 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
     public boolean existsByKode(String kode) {
         return kebunJpaRepository.existsByKode(kode);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long count() {
+        return kebunJpaRepository.count();
+    }
 }

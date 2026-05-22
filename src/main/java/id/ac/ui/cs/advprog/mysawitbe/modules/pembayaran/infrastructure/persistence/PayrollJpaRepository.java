@@ -15,4 +15,6 @@ public interface PayrollJpaRepository extends JpaRepository<PayrollEntity, UUID>
             UUID referenceId,
             String referenceType
     );
+
+    long countByStatus(String status);
 }

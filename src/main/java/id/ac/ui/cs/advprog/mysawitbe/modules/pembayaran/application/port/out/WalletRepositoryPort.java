@@ -32,4 +32,6 @@ public interface WalletRepositoryPort {
      * Uses reference string (Midtrans orderId) instead of payrollId.
      */
     WalletBalanceDTO creditTopUp(UUID userId, long amount, String reference);
+
+    long sumAllWorkerBalances();
 }

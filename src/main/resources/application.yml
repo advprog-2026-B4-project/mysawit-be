@@ -107,6 +107,18 @@ management:
   metrics:
     tags:
       application: mysawit-be
+    distribution:
+      percentiles-histogram:
+        panen.create.duration: true
+        panen.approve.duration: true
+        http.server.requests: true
+      percentiles:
+        panen.create.duration: 0.5,0.95,0.99
+        panen.approve.duration: 0.5,0.95,0.99
+        http.server.requests: 0.5,0.95,0.99
+      slo:
+        panen.create.duration: 300ms
+        panen.approve.duration: 300ms
 
 logging:
   level:

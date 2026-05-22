@@ -93,6 +93,11 @@ public class PayrollRepositoryAdapter implements PayrollRepositoryPort {
 	}
 
 	@Override
+	public long countPendingPayrolls() {
+		return payrollJpaRepository.countByStatus("PENDING");
+	}
+
+	@Override
 	public void updateWageRate(String role, int newRatePerGram) {
 		VariableKey key = toVariableKey(role);
 		VariabelPokokEntity entity = variabelPokokJpaRepository.findById(key)

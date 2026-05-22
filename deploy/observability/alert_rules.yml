@@ -1,0 +1,87 @@
+groups:
+  - name: mysawit.slo
+    interval: 60s
+    rules:
+
+      # ── 1. p95 Panen Create Latency > 300ms (NFR) ─────────────────────────
+      - alert: PanenCreateLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(panen_create_duration_seconds_bucket[5m])) by (le, env, application)
+          ) > 0.3
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "p95 createPanen latency breached 300ms SLO (env={{ $labels.env }})"
+          description: >
+            p95 latency for `createPanen` is {{ $value | humanizeDuration }} on env={{ $labels.env }}.
+            NFR target: p95 < 300ms. Has been above threshold for > 5 minutes.
+          runbook: "Check DB query time (N+1?), HikariCP pool saturation, and GC pauses in Grafana."
+
+      # ── 2. p95 Panen Approve Latency > 300ms ──────────────────────────────
+      - alert: PanenApproveLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(panen_approve_duration_seconds_bucket[5m])) by (le, env, application)
+          ) > 0.3
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "p95 approvePanen latency breached 300ms (env={{ $labels.env }})"
+          description: >
+            p95 latency for `approvePanen` (triggers payroll pipeline) is
+            {{ $value | humanizeDuration }} on env={{ $labels.env }}.
+          runbook: "Event chain (panen→payroll→notification) may be slow. Check async executor thread pool."
+
+      # ── 3. HTTP 5xx Error Rate > 1% ────────────────────────────────────────
+      - alert: HighServerErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (env, application)
+            /
+            sum(rate(http_server_requests_seconds_count[5m])) by (env, application)
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "HTTP 5xx rate > 1% on env={{ $labels.env }}"
+          description: >
+            {{ $value | humanizePercentage }} of requests are returning 5xx errors
+            on env={{ $labels.env }} over the last 5 minutes.
+          runbook: "Check application logs (`/var/log/mysawit/`) and Loki in Grafana for stack traces."
+
+  - name: mysawit.business
+    interval: 60s
+    rules:
+
+      # ── 4. Payroll Pending Backlog (financial risk) ────────────────────────
+      - alert: PayrollPendingBacklog
+        expr: payroll_pending_count{application="mysawit-be"} > 50
+        for: 15m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Payroll pending queue > 50 on env={{ $labels.env }}"
+          description: >
+            {{ $value }} payrolls are stuck in PENDING state for > 15 minutes.
+            Financial obligation is accumulating without disbursement.
+
+      # ── 5. App Down ────────────────────────────────────────────────────────
+      - alert: MySawitBackendDown
+        expr: up{job=~"mysawit-be.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "MySawit backend is DOWN (env={{ $labels.env }})"
+          description: "Prometheus cannot scrape {{ $labels.instance }} (env={{ $labels.env }}). App may be crashed or unreachable."

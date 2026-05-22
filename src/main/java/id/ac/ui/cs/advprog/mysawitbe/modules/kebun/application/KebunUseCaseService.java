@@ -12,6 +12,10 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.domain.BoundingBox;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.domain.KebunGeometry;
 import jakarta.persistence.EntityNotFoundException;
 import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +31,39 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
     private final KebunRepositoryPort kebunRepository;
     private final UserQueryUseCase userQueryUseCase;
     private final DomainEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
+
+    private Counter kebunCreatedCounter;
+    private Counter mandorAssignedCounter;
+    private Counter supirAssignedCounter;
 
     public KebunUseCaseService(KebunRepositoryPort kebunRepository,
                                UserQueryUseCase userQueryUseCase,
-                               DomainEventPublisher eventPublisher) {
+                               DomainEventPublisher eventPublisher,
+                               MeterRegistry meterRegistry) {
         this.kebunRepository = kebunRepository;
         this.userQueryUseCase = userQueryUseCase;
         this.eventPublisher = eventPublisher;
+        this.meterRegistry = meterRegistry;
+    }
+
+    @PostConstruct
+    void initMetrics() {
+        Gauge.builder("kebun.total", kebunRepository, KebunRepositoryPort::count)
+                .description("Jumlah kebun aktif terdaftar")
+                .register(meterRegistry);
+
+        kebunCreatedCounter = Counter.builder("kebun.created.total")
+                .description("Jumlah kebun baru yang dibuat (cumulative)")
+                .register(meterRegistry);
+
+        mandorAssignedCounter = Counter.builder("kebun.mandor.assigned.total")
+                .description("Jumlah assignment/pindah mandor ke kebun")
+                .register(meterRegistry);
+
+        supirAssignedCounter = Counter.builder("kebun.supir.assigned.total")
+                .description("Jumlah assignment/pindah supir ke kebun")
+                .register(meterRegistry);
     }
 
     // ---------------- Command Use Cases ----------------
@@ -54,7 +84,9 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         }
 
         KebunDTO dto = new KebunDTO(null, nama, kode, luas, coordinates);
-        return kebunRepository.save(dto);
+        KebunDTO saved = kebunRepository.save(dto);
+        kebunCreatedCounter.increment();
+        return saved;
     }
 
     @Override
@@ -106,6 +138,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         ensureKebunHasNoMandor(kebunId, "Kebun sudah memiliki mandor");
 
         kebunRepository.assignMandor(mandorId, kebunId);
+        mandorAssignedCounter.increment();
         eventPublisher.publish(new MandorAssignedToKebunEvent(mandorId, kebunId));
     }
 
@@ -133,6 +166,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         ensureKebunHasNoMandor(newKebunId, "Kebun tujuan sudah memiliki mandor");
 
         kebunRepository.moveMandor(mandorId, newKebunId);
+        mandorAssignedCounter.increment();
         eventPublisher.publish(new MandorAssignedToKebunEvent(mandorId, newKebunId));
     }
 
@@ -151,6 +185,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         }
 
         kebunRepository.assignSupir(supirId, kebunId);
+        supirAssignedCounter.increment();
     }
 
     @Override
@@ -168,6 +203,7 @@ public class KebunUseCaseService implements KebunCommandUseCase, KebunQueryUseCa
         }
 
         kebunRepository.moveSupir(supirId, newKebunId);
+        supirAssignedCounter.increment();
     }
 
     @Override

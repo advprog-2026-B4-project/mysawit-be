@@ -3,10 +3,11 @@ package id.ac.ui.cs.advprog.mysawitbe.common.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -15,14 +16,14 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
-import io.github.bucket4j.distributed.proxy.SuppliedBucketBuilder;
+import io.github.bucket4j.ConsumptionProbe;
+import io.github.bucket4j.distributed.BucketProxy;
+import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -52,29 +53,32 @@ class RateLimitFilterTest {
 
     private StringWriter responseWriter;
 
-    // Cached buckets by Redis key — simulates shared Redis state
-    private final ConcurrentMap<String, Bucket> bucketStore = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, BucketProxy> bucketStore = new ConcurrentHashMap<>();
 
     @BeforeEach
     void setUp() throws IOException {
         responseWriter = new StringWriter();
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
 
-        when(proxyManager.builder()).thenAnswer(inv -> {
-            var configHolder = new BucketConfiguration[1];
-            var keyHolder = new String[1];
-
-            SuppliedBucketBuilder mockBuilder = org.mockito.Mockito.mock(SuppliedBucketBuilder.class);
-            when(mockBuilder.withKey(any())).thenAnswer(a -> { keyHolder[0] = (String) a.getArgument(0); return mockBuilder; });
-            doAnswer(a -> { configHolder[0] = a.getArgument(0); return mockBuilder; }).when(mockBuilder).withConfiguration(any(BucketConfiguration.class));
-            when(mockBuilder.build()).thenAnswer(a -> {
-                String key = keyHolder[0] != null ? keyHolder[0] : "default";
+        lenient().when(proxyManager.builder()).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            RemoteBucketBuilder<String> mockBuilder = mock(RemoteBucketBuilder.class);
+            when(mockBuilder.build(any(), any(BucketConfiguration.class))).thenAnswer(a -> {
+                String key = a.getArgument(0);
+                BucketConfiguration cfg = a.getArgument(1);
                 return bucketStore.computeIfAbsent(key, k -> {
-                    var cfg = configHolder[0];
-                    if (cfg == null) cfg = BucketConfiguration.builder()
-                            .addLimit(Bandwidth.builder().capacity(100).refillGreedy(100, Duration.ofMinutes(1)).build())
-                            .build();
-                    return Bucket.builder().withConfiguration(cfg).build();
+                    long capacity = cfg.getBandwidths()[0].getCapacity();
+                    var tokens = new AtomicLong(capacity);
+                    BucketProxy mockBucket = mock(BucketProxy.class);
+                    when(mockBucket.tryConsumeAndReturnRemaining(anyLong())).thenAnswer(ta -> {
+                        long num = ta.getArgument(0);
+                        long current = tokens.getAndUpdate(v -> Math.max(0, v - num));
+                        if (current >= num) {
+                            return ConsumptionProbe.consumed(current - num, 0L);
+                        }
+                        return ConsumptionProbe.rejected(current, 1_000_000_000L, 0L);
+                    });
+                    return mockBucket;
                 });
             });
             return mockBuilder;

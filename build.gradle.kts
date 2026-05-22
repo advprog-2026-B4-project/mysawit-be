@@ -111,6 +111,7 @@ tasks.withType<Test> {
 }
 
 tasks.test {
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     filter {
         excludeTestsMatching("*FunctionalTest")
     }

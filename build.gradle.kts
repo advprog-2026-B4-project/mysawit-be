@@ -80,7 +80,8 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // AOP (for PanenMetricsAspect)
-    implementation("org.springframework.boot:spring-boot-starter-aop")
+    implementation("org.springframework:spring-aop")
+    implementation("org.aspectj:aspectjweaver")
 
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")

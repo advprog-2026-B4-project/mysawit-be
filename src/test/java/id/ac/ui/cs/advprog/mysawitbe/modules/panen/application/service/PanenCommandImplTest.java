@@ -31,6 +31,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprov
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenRejectedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenMapperPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -332,6 +333,6 @@ class PanenCommandImplTest {
     private Panen buildDomainPanen(UUID panenId, UUID buruhId, UUID kebunId,
                                    PanenStatus status, String rejectionReason) {
         return new Panen(panenId, buruhId, "Budi", kebunId,
-                "desc", 100, status, rejectionReason, LocalDateTime.now(), List.of());
+                "desc", Weight.of(100), status, rejectionReason, LocalDateTime.now(), List.of());
     }
 }

@@ -9,6 +9,6 @@ import java.util.UUID;
 @Repository
 public interface WalletJpaRepository extends JpaRepository<WalletEntity, UUID> {
 
-    @Query("SELECT COALESCE(SUM(w.balance.amountSmallestUnit), 0) FROM WalletEntity w")
+    @Query("SELECT COALESCE(SUM(w.balance), 0) FROM WalletEntity w")
     long sumAllBalances();
 }

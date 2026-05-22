@@ -17,6 +17,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenReject
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenMapperPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -54,11 +55,11 @@ public class PanenCommandImpl implements PanenCommandUseCase {
         String buruhName = buruh.name();
 
         Panen domainPanen = Panen.catatBaru(
-                buruhId, 
-                buruhName, 
-                kebunId, 
+                buruhId,
+                buruhName,
+                kebunId,
                 description,
-                weight,
+                Weight.of(weight),
                 now,
                 photoUrls
         );

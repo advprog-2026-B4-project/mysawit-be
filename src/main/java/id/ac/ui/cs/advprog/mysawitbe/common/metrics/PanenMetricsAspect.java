@@ -59,21 +59,31 @@ public class PanenMetricsAspect {
     @Around("execution(* id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.PanenCommandImpl.createPanen(..))")
     public Object timeCreatePanen(ProceedingJoinPoint pjp) throws Throwable {
         return createPanenTimer.recordCallable(() -> {
-            PanenDTO result = (PanenDTO) pjp.proceed();
-            panenSubmittedCounter.increment();
-            if (result != null) {
-                panenWeightSummary.record(result.weight());
+            try {
+                PanenDTO result = (PanenDTO) pjp.proceed();
+                panenSubmittedCounter.increment();
+                if (result != null) {
+                    panenWeightSummary.record(result.weight());
+                }
+                return result;
+            } catch (Throwable t) {
+                if (t instanceof Exception e) throw e;
+                throw new RuntimeException(t);
             }
-            return result;
         });
     }
 
     @Around("execution(* id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.service.PanenCommandImpl.approvePanen(..))")
     public Object timeApprovePanen(ProceedingJoinPoint pjp) throws Throwable {
         return approvePanenTimer.recordCallable(() -> {
-            Object result = pjp.proceed();
-            panenApprovedCounter.increment();
-            return result;
+            try {
+                Object result = pjp.proceed();
+                panenApprovedCounter.increment();
+                return result;
+            } catch (Throwable t) {
+                if (t instanceof Exception e) throw e;
+                throw new RuntimeException(t);
+            }
         });
     }
 

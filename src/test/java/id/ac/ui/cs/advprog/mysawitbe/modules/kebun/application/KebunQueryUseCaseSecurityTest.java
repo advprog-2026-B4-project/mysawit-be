@@ -4,6 +4,8 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.out.KebunRepositoryPort;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,12 +57,18 @@ class KebunQueryUseCaseSecurityTest {
         }
 
         @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+
+        @Bean
         KebunUseCaseService kebunUseCaseService(
                 KebunRepositoryPort kebunRepositoryPort,
                 UserQueryUseCase userQueryUseCase,
-                DomainEventPublisher applicationEventPublisher
+                DomainEventPublisher applicationEventPublisher,
+                MeterRegistry meterRegistry
         ) {
-            return new KebunUseCaseService(kebunRepositoryPort, userQueryUseCase, applicationEventPublisher);
+            return new KebunUseCaseService(kebunRepositoryPort, userQueryUseCase, applicationEventPublisher, meterRegistry);
         }
     }
 

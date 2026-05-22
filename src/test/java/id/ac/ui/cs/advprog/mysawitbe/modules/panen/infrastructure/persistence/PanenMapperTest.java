@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenPhoto;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus;
@@ -46,7 +47,7 @@ class PanenMapperTest {
         @Test
         void shouldMapDomainToEntityWithPhotos() {
             PanenPhoto photo = new PanenPhoto(UUID.randomUUID(), "http://photo.com/1.jpg");
-            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Desc", 100,
+            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Desc", Weight.of(100),
                     PanenStatus.PENDING, null, timestamp, List.of(photo));
 
             PanenEntity entity = mapper.toEntity(domain);
@@ -68,7 +69,7 @@ class PanenMapperTest {
         @Test
         void shouldMapDomainToEntityWithNullPhotos() {
             // Test branch: if (panen.getPhotos() == null) return;
-            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Desc", 100,
+            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Desc", Weight.of(100),
                     PanenStatus.PENDING, null, timestamp, null);
 
             PanenEntity entity = mapper.toEntity(domain);
@@ -110,7 +111,7 @@ class PanenMapperTest {
 
             assertNotNull(domain);
             assertEquals(panenId, domain.getPanenId());
-            assertEquals(150, domain.getWeight());
+            assertEquals(Weight.of(150), domain.getWeight());
             assertEquals(PanenStatus.APPROVED, domain.getStatus());
             assertEquals(timestamp, domain.getTimestamp());
             assertNull(domain.getBuruhName()); // Di-ignore di @Mapping
@@ -125,6 +126,7 @@ class PanenMapperTest {
         void shouldMapEntityToDomainWithNullPhotos() {
             // Test branch: if (entities == null) return List.of();
             PanenEntity entity = new PanenEntity();
+            entity.setWeight(100);
             entity.setCreatedAt(timestamp);
             entity.setPhotos(null);
 
@@ -150,7 +152,7 @@ class PanenMapperTest {
         @Test
         void shouldMapDomainToDTOWithPhotos() {
             PanenPhoto photo = new PanenPhoto(UUID.randomUUID(), "http://photo.com/3.jpg");
-            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Test DTO", 120,
+            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Test DTO", Weight.of(120),
                     PanenStatus.REJECTED, "Kualitas buruk", timestamp, List.of(photo));
 
             PanenDTO dto = mapper.toDTO(domain);
@@ -169,7 +171,7 @@ class PanenMapperTest {
         @Test
         void shouldMapDomainToDTOWithNullPhotos() {
             // Test branch: if (photos == null) return List.of();
-            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Test DTO", 120,
+            Panen domain = new Panen(panenId, buruhId, "Budi", kebunId, "Test DTO", Weight.of(120),
                     PanenStatus.REJECTED, "Kualitas buruk", timestamp, null);
 
             PanenDTO dto = mapper.toDTO(domain);
@@ -263,6 +265,7 @@ class PanenMapperTest {
         void shouldMapEntityToDtoWithNullPhotos() {
             // Test branch: if (entities == null) return List.of();
             PanenEntity entity = new PanenEntity();
+            entity.setWeight(100);
             entity.setStatus(PanenStatus.PENDING);
             entity.setPhotos(null);
 

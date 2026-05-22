@@ -28,6 +28,7 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Mapping(target = "createdAt", source = "timestamp")
     @Mapping(target = "harvestDate", expression = "java(panen.getTimestamp().toLocalDate())")
+    @Mapping(target = "weight", expression = "java(panen.getWeight().grams())")
     @Mapping(target = "photos", ignore = true)
     PanenEntity toEntity(Panen panen);
 
@@ -49,6 +50,7 @@ public interface PanenMapper extends PanenMapperPort {
     @Mapping(target = "timestamp", source = "createdAt")
     @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "buruhName", ignore = true)
+    @Mapping(target = "weight", expression = "java(id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight.of(entity.getWeight()))")
     @Mapping(target = "photos", source = "photos", qualifiedByName = "entityPhotosToDomain")
     Panen toDomain(PanenEntity entity);
 
@@ -56,6 +58,7 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Override
     @Mapping(target = "status", expression = "java(panen.getStatus().name())")
+    @Mapping(target = "weight", expression = "java(panen.getWeight().grams())")
     @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "photos", source = "photos", qualifiedByName = "domainPhotosToPhotoDTOs")
     PanenDTO toDTO(Panen panen);
@@ -64,6 +67,7 @@ public interface PanenMapper extends PanenMapperPort {
 
     @Override
     @Mapping(target = "status", expression = "java(id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus.valueOf(dto.status()))")
+    @Mapping(target = "weight", expression = "java(id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight.of(dto.weight()))")
     @Mapping(target = "rejectionReason", source = "rejectionReason")
     @Mapping(target = "photos", source = "photos", qualifiedByName = "photoDTOsToDomain")
     @Mapping(target = "timestamp", source = "timestamp")

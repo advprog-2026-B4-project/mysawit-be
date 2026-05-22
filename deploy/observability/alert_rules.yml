@@ -39,7 +39,21 @@ groups:
             {{ $value | humanizeDuration }} on env={{ $labels.env }}.
           runbook: "Event chain (panen→payroll→notification) may be slow. Check async executor thread pool."
 
-      # ── 3. HTTP 5xx Error Rate > 1% ────────────────────────────────────────
+      # ── 3. APDEX Score < 0.7 (user satisfaction degraded) ───────────────────
+      - alert: ApdexScoreLow
+        expr: apdex_score{application="mysawit-be"} < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "APDEX score below 0.7 (env={{ $labels.env }})"
+          description: >
+            APDEX score is {{ $value | humanizePercentage }} on env={{ $labels.env }}.
+            APDEX threshold T=500ms (configurable via APDEX_THRESHOLD_MS env var): user satisfaction has been below 0.7 for > 10 minutes.
+          runbook: "Check HTTP latency distributions and error rates in Grafana → MySawit Backend → APDEX row."
+
+      # ── 4. HTTP 5xx Error Rate > 1% ────────────────────────────────────────
       - alert: HighServerErrorRate
         expr: |
           (

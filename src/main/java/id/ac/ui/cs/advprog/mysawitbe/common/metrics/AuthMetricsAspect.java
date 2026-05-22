@@ -67,9 +67,14 @@ public class AuthMetricsAspect {
     public Object timeLoginWithEmail(ProceedingJoinPoint pjp) throws Throwable {
         try {
             return loginEmailTimer.recordCallable(() -> {
-                Object result = pjp.proceed();
-                loginEmailSuccessCounter.increment();
-                return result;
+                try {
+                    Object result = pjp.proceed();
+                    loginEmailSuccessCounter.increment();
+                    return result;
+                } catch (Throwable t) {
+                    if (t instanceof Exception e) throw e;
+                    throw new RuntimeException(t);
+                }
             });
         } catch (Exception ex) {
             loginEmailFailureCounter.increment();

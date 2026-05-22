@@ -10,12 +10,13 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.Pengir
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanStatusTibaEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
@@ -46,7 +47,7 @@ class PengirimanCommandUseCaseImplTest {
     @Mock
     private DomainEventPublisher eventPublisher;
 
-    @InjectMocks
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
     private PengirimanCommandUseCaseImpl service;
 
     private UUID mandorId;
@@ -55,6 +56,8 @@ class PengirimanCommandUseCaseImplTest {
 
     @BeforeEach
     void setUp() {
+        service = new PengirimanCommandUseCaseImpl(repository, kebunQueryUseCase, panenQueryUseCase, eventPublisher, meterRegistry);
+        service.initMetrics();
         mandorId = UUID.randomUUID();
         supirId = UUID.randomUUID();
         kebunId = UUID.randomUUID();

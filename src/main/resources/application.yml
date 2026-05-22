@@ -3,6 +3,8 @@ api:
     path: /api/kebun
 
 app:
+  apdex:
+    threshold-ms: ${APDEX_THRESHOLD_MS:500}
   midtrans:
     server-key: ${MIDTRANS_SERVER_KEY:}
     client-key: ${MIDTRANS_CLIENT_KEY:}

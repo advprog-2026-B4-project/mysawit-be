@@ -15,7 +15,7 @@ import java.util.Date;
 @Component
 public class JwtService {
 
-    private static final long OAUTH_REGISTRATION_EXPIRATION_MS = 10 * 60 * 1000;
+    private static final long OAUTH_REGISTRATION_EXPIRATION_MS = 10L * 60 * 1000;
     private static final String OAUTH_REGISTRATION_TYPE = "oauth-registration";
 
     private final SecretKey key;

@@ -45,7 +45,7 @@ public class ApdexFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } finally {
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-            apdexMetrics.record(elapsedMs);
+            apdexMetrics.logRequest(elapsedMs);
         }
     }
 

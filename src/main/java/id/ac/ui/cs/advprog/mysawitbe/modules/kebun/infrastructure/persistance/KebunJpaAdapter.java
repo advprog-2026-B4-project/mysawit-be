@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class KebunJpaAdapter implements KebunRepositoryPort {
 
+    private static final String NOT_FOUND_PREFIX = "Kebun not found: ";
+
     private final KebunJpaRepository kebunJpaRepository;
     private final KebunSupirJpaRepository kebunSupirJpaRepository;
     private final KebunJpaMapper kebunJpaMapper;
@@ -93,7 +95,7 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
     @Transactional(readOnly = true)
     public UUID findMandorIdByKebunId(UUID kebunId) {
         KebunJpaEntity e = kebunJpaRepository.findById(kebunId)
-                .orElseThrow(() -> new EntityNotFoundException("Kebun not found: " + kebunId));
+                .orElseThrow(() -> new EntityNotFoundException(NOT_FOUND_PREFIX + kebunId));
         return e.getMandorId();
     }
 
@@ -129,7 +131,7 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
     @Override
     public void assignMandor(UUID mandorId, UUID kebunId) {
         KebunJpaEntity target = kebunJpaRepository.findById(kebunId)
-                .orElseThrow(() -> new EntityNotFoundException("Kebun not found: " + kebunId));
+                .orElseThrow(() -> new EntityNotFoundException(NOT_FOUND_PREFIX + kebunId));
         target.setMandorId(mandorId);
         kebunJpaRepository.save(target);
     }
@@ -167,7 +169,7 @@ public class KebunJpaAdapter implements KebunRepositoryPort {
         });
 
         KebunJpaEntity target = kebunJpaRepository.findById(newKebunId)
-                .orElseThrow(() -> new EntityNotFoundException("Kebun not found: " + newKebunId));
+                .orElseThrow(() -> new EntityNotFoundException(NOT_FOUND_PREFIX + newKebunId));
         target.setMandorId(mandorId);
         kebunJpaRepository.save(target);
     }

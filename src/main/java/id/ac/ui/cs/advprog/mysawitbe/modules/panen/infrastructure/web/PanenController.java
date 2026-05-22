@@ -33,6 +33,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PanenController {
 
+    private static final String ERROR_PREFIX = "Terjadi kesalahan: ";
+
     private final PanenCommandUseCase commandUseCase;
     private final PanenQueryUseCase queryUseCase;
 
@@ -55,7 +57,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -74,7 +76,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -113,7 +115,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -138,7 +140,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -168,7 +170,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -188,7 +190,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 
@@ -220,7 +222,7 @@ public class PanenController {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Terjadi kesalahan: " + e.getMessage()));
+                    .body(ApiResponse.error(ERROR_PREFIX + e.getMessage()));
         }
     }
 

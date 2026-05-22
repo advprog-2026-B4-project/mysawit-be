@@ -6,7 +6,9 @@ import java.net.URI;
 import org.springframework.stereotype.Component;
 
 import id.ac.ui.cs.advprog.mysawitbe.common.application.port.out.StoragePort;
+import id.ac.ui.cs.advprog.mysawitbe.common.exception.StorageException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -14,34 +16,23 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
-/**
- * R2 (Cloudflare S3) storage adapter.
- * 
- * Per agent.md: Infrastructure adapter layer.
- * Implements StoragePort (application port).
- * Only handles technical concerns (S3 API calls).
- */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class R2StorageAdapter implements StoragePort {
 
     private final R2Properties properties;
 
-    /**
-     * Build S3Client configured untuk R2.
-     *
-     * @return S3Client
-     * @throws IllegalStateException jika credentials tidak valid
-     */
     private S3Client buildClient() {
         validateCredentials();
 
-        System.out.println("Building R2 S3Client: endpoint=" + properties.getEndpoint()
-                + ", bucket=" + properties.getBucket());
+        log.info("Building R2 S3Client: endpoint={}, bucket={}",
+                properties.getEndpoint(), properties.getBucket());
 
         return S3Client.builder()
                 .endpointOverride(URI.create(properties.getEndpoint()))
@@ -51,16 +42,10 @@ public class R2StorageAdapter implements StoragePort {
                                 properties.getSecretKey()
                         )
                 ))
-                // R2 pakai region "auto" — tidak ada region nyata
                 .region(Region.of("auto"))
                 .build();
     }
 
-    /**
-     * Validate R2 credentials are present.
-     *
-     * @throws IllegalStateException jika credentials tidak valid
-     */
     private void validateCredentials() {
         if (properties.getAccessKey() == null || properties.getAccessKey().isBlank()) {
             throw new IllegalStateException(
@@ -90,7 +75,7 @@ public class R2StorageAdapter implements StoragePort {
         }
 
         try (S3Client s3 = buildClient()) {
-            System.out.println("Uploading file to R2: " + fileName + " (" + contentType + ")");
+            log.debug("Uploading file to R2: {} ({})", fileName, contentType);
 
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(properties.getBucket())
@@ -100,26 +85,20 @@ public class R2StorageAdapter implements StoragePort {
                     .build();
 
             s3.putObject(request, RequestBody.fromInputStream(
-                    new ByteArrayInputStream(data), 
+                    new ByteArrayInputStream(data),
                     data.length
             ));
 
             String publicUrl = getPublicUrl(fileName);
-            System.out.println("File uploaded successfully: " + publicUrl);
+            log.info("File uploaded successfully: {}", publicUrl);
             return publicUrl;
 
-        } catch (Exception e) {
-            System.err.println("Failed to upload file " + fileName + " to R2: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("File upload failed: " + e.getMessage(), e);
+        } catch (S3Exception e) {
+            log.error("Failed to upload file {} to R2", fileName, e);
+            throw new StorageException("File upload failed: " + fileName, e);
         }
     }
 
-    /**
-     * Build S3Presigner configured for R2.
-     *
-     * @return S3Presigner
-     */
     private S3Presigner buildPresigner() {
         validateCredentials();
 
@@ -145,7 +124,7 @@ public class R2StorageAdapter implements StoragePort {
         }
 
         try (S3Presigner presigner = buildPresigner()) {
-            System.out.println("Generating presigned URL for R2: " + fileKey + " (" + contentType + ")");
+            log.debug("Generating presigned URL for R2: {} ({})", fileKey, contentType);
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                     .signatureDuration(java.time.Duration.ofMinutes(15))
@@ -159,13 +138,12 @@ public class R2StorageAdapter implements StoragePort {
             PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
             String presignedUrl = presignedRequest.url().toString();
 
-            System.out.println("Presigned URL generated: " + presignedUrl);
+            log.debug("Presigned URL generated: {}", presignedUrl);
             return presignedUrl;
 
-        } catch (Exception e) {
-            System.err.println("Failed to generate presigned URL for " + fileKey + ": " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Presigned URL generation failed: " + e.getMessage(), e);
+        } catch (S3Exception e) {
+            log.error("Failed to generate presigned URL for {}", fileKey, e);
+            throw new StorageException("Presigned URL generation failed: " + fileKey, e);
         }
     }
 
@@ -176,19 +154,18 @@ public class R2StorageAdapter implements StoragePort {
         }
 
         try (S3Client s3 = buildClient()) {
-            System.out.println("Deleting file from R2: " + fileKey);
+            log.debug("Deleting file from R2: {}", fileKey);
 
             s3.deleteObject(DeleteObjectRequest.builder()
                     .bucket(properties.getBucket())
                     .key(fileKey)
                     .build());
 
-            System.out.println("File deleted successfully: " + fileKey);
+            log.info("File deleted successfully: {}", fileKey);
 
-        } catch (Exception e) {
-            System.err.println("Failed to delete file " + fileKey + " from R2: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("File deletion failed: " + e.getMessage(), e);
+        } catch (S3Exception e) {
+            log.error("Failed to delete file {} from R2", fileKey, e);
+            throw new StorageException("File deletion failed: " + fileKey, e);
         }
     }
 

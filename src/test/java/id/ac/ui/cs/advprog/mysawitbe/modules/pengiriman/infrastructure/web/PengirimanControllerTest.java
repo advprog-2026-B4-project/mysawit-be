@@ -159,13 +159,13 @@ class PengirimanControllerTest {
     @Test
     void assignSupirForDelivery_returns201WithCreatedDelivery() throws Exception {
         UUID mandorId = UUID.randomUUID();
-        UUID supirId = UUID.randomUUID();
+        UUID testSupirId = UUID.randomUUID();
         UUID panenA = UUID.randomUUID();
 
-        when(commandUseCase.assignSupirForDelivery(mandorId, supirId, List.of(panenA)))
+        when(commandUseCase.assignSupirForDelivery(mandorId, testSupirId, List.of(panenA)))
                 .thenReturn(new PengirimanDTO(
                         UUID.randomUUID(),
-                        supirId,
+                        testSupirId,
                         null,
                         mandorId,
                         null,
@@ -185,7 +185,7 @@ class PengirimanControllerTest {
                                   "supirId": "%s",
                                   "panenIds": ["%s"]
                                 }
-                                """.formatted(supirId, panenA)))
+                                """                                .formatted(testSupirId, panenA)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("ASSIGNED"))

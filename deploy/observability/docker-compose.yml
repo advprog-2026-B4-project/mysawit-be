@@ -71,7 +71,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
       - ./loki:/etc/loki:ro
-      - loki_data:/loki
+      - loki_storage:/loki
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3100/ready"]
       interval: 10s
@@ -114,5 +114,5 @@ volumes:
   prometheus_data:
   alertmanager_data:
   grafana_data:
-  loki_data:
+  loki_storage:
 

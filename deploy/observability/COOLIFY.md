@@ -138,6 +138,8 @@ Open **Dashboards** → **MySawit** folder. Two dashboards are provisioned:
 
 Critical alerts go to the `DISCORD_WEBHOOK_URL_CRITICAL` channel. Warnings go to `DISCORD_WEBHOOK_URL_WARNING`.
 
+> **Note**: If Discord webhook URLs are not set, Alertmanager starts with a blackhole receiver — alerts are evaluated but silently discarded. Set the env vars and restart the Alertmanager container to enable Discord notifications. You can also set both to the same webhook URL if you only have one channel.
+
 ---
 
 ## Retention

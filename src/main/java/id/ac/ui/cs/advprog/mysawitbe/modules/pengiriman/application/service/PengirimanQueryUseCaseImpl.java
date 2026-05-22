@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -97,7 +98,7 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
                 .map(PanenDTO::panenId)
                 .filter(Objects::nonNull)
                 .toList();
-        List<UUID> assignedPanenIds = repository.findAssignedPanenIds(panenIds);
+        Set<UUID> assignedPanenIds = Set.copyOf(repository.findAssignedPanenIds(panenIds));
 
         return approvedPanen.stream()
                 .filter(panen -> panen.panenId() != null)
@@ -222,6 +223,9 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
                     previousWeight[weight] = weight - itemWeight;
                     previousItem[weight] = itemIndex;
                 }
+            }
+            if (reachable[capacity]) {
+                break;
             }
         }
 

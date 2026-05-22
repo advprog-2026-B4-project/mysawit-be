@@ -12,7 +12,7 @@ services:
         sed \
           -e "s/BACKEND_HOST_MAIN_PLACEHOLDER/$${BACKEND_HOST_MAIN}/g" \
           -e "s/BACKEND_HOST_STAGING_PLACEHOLDER/$${BACKEND_HOST_STAGING}/g" \
-          /etc/prometheus/prometheus.yml.tmpl > /tmp/prometheus.yml
+          /tmp/prometheus.yml.tmpl > /tmp/prometheus.yml
         echo "=== Config ===" && cat /tmp/prometheus.yml
         exec /bin/prometheus \
           --config.file=/tmp/prometheus.yml \
@@ -20,7 +20,7 @@ services:
           --storage.tsdb.retention.time=30d \
           --web.enable-lifecycle
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml.tmpl:ro
+      - ./prometheus.yml:/tmp/prometheus.yml.tmpl:ro
       - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     networks:

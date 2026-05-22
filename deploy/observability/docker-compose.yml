@@ -12,15 +12,14 @@ services:
         sed \
           -e "s|\$${BACKEND_HOST_MAIN}|$$BACKEND_HOST_MAIN|g" \
           -e "s|\$${BACKEND_HOST_STAGING}|$$BACKEND_HOST_STAGING|g" \
-          /etc/prometheus/prometheus.tmpl > /tmp/prometheus.yml
+          /etc/observability/prometheus.yml > /tmp/prometheus.yml
         exec /bin/prometheus \
           --config.file=/tmp/prometheus.yml \
           --storage.tsdb.path=/prometheus \
           --storage.tsdb.retention.time=30d \
           --web.enable-lifecycle
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.tmpl:ro
-      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - .:/etc/observability:ro
       - prometheus_data:/prometheus
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:9090/-/healthy"]
@@ -43,7 +42,7 @@ services:
           sed \
             -e "s|\$${DISCORD_WEBHOOK_URL_CRITICAL}|$$DISCORD_WEBHOOK_URL_CRITICAL|g" \
             -e "s|\$${DISCORD_WEBHOOK_URL_WARNING}|$$DISCORD_WEBHOOK_URL_WARNING|g" \
-            /etc/alertmanager/alertmanager.tmpl > /tmp/alertmanager.yml
+            /etc/observability/alertmanager.yml > /tmp/alertmanager.yml
         else
           printf 'route:\n  receiver: blackhole\nreceivers:\n  - name: blackhole\n' > /tmp/alertmanager.yml
         fi
@@ -52,7 +51,7 @@ services:
           --storage.path=/alertmanager \
           --web.listen-address=0.0.0.0:9093
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.tmpl:ro
+      - .:/etc/observability:ro
       - alertmanager_data:/alertmanager
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:9093/-/healthy"]
@@ -68,9 +67,9 @@ services:
     image: grafana/loki:3.3.0
     restart: unless-stopped
     user: "0:0"
-    command: -config.file=/etc/loki/loki-config.yaml
+    command: -config.file=/etc/observability/loki/loki-config.yaml
     volumes:
-      - ./loki:/etc/loki:ro
+      - .:/etc/observability:ro
       - loki_storage:/loki
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3100/ready"]
@@ -82,9 +81,9 @@ services:
   alloy:
     image: grafana/alloy:v1.5.0
     restart: unless-stopped
-    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/observability/alloy/config.alloy
     volumes:
-      - ./alloy:/etc/alloy:ro
+      - .:/etc/observability:ro
       - /var/log/mysawit:/var/log/mysawit:ro
     depends_on:
       loki:
@@ -101,7 +100,13 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./provisioning:/etc/grafana/provisioning:ro
+      - .:/etc/observability:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        ln -sf /etc/observability/provisioning /etc/grafana/provisioning
+        exec /run.sh
     ports:
       - "3000"
     depends_on:
@@ -115,4 +120,3 @@ volumes:
   alertmanager_data:
   grafana_data:
   loki_storage:
-

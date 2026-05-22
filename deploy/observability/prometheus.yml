@@ -10,7 +10,7 @@ global:
 #         - targets: ['alertmanager:9093']
 
 rule_files:
-  - /etc/prometheus/alert_rules.yml
+  - /etc/observability/alert_rules.yml
 
 scrape_configs:
   # ── main (production) branch ──────────────────────────────────────────────

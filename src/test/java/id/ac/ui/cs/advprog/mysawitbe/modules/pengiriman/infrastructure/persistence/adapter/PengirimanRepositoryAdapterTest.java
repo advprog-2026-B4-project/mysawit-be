@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.adapter;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaEntity;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaRepository;
@@ -9,6 +10,8 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persisten
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -222,5 +225,46 @@ class PengirimanRepositoryAdapterTest {
         when(mapper.toDtoList(List.of(entity))).thenReturn(List.of(dto));
 
         assertThat(adapter.findApprovedByMandorForAdmin("ignored", date)).containsExactly(dto);
+    }
+
+    @Test
+    void findApprovedByMandorForAdminPaginated_withoutDate_usesPagedStatusQuery() {
+        PageRequest pageable = PageRequest.of(0, 5);
+        when(jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED_MANDOR.name(), pageable))
+                .thenReturn(new PageImpl<>(List.of(entity), pageable, 7));
+        when(mapper.toDtoList(List.of(entity))).thenReturn(List.of(dto));
+
+        PengirimanPageDTO result = adapter.findApprovedByMandorForAdminPaginated(null, 0, 5);
+
+        assertThat(result.items()).containsExactly(dto);
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(5);
+        assertThat(result.totalElements()).isEqualTo(7);
+        assertThat(result.totalPages()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.hasPrevious()).isFalse();
+    }
+
+    @Test
+    void findApprovedByMandorForAdminPaginated_withDate_usesPagedDateQuery() {
+        LocalDate date = LocalDate.of(2026, 4, 1);
+        PageRequest pageable = PageRequest.of(0, 5);
+        when(jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
+                PengirimanStatus.APPROVED_MANDOR.name(),
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay().minusNanos(1),
+                pageable))
+                .thenReturn(new PageImpl<>(List.of(entity), pageable, 1));
+        when(mapper.toDtoList(List.of(entity))).thenReturn(List.of(dto));
+
+        PengirimanPageDTO result = adapter.findApprovedByMandorForAdminPaginated(date, 0, 5);
+
+        assertThat(result.items()).containsExactly(dto);
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(5);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(1);
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.hasPrevious()).isFalse();
     }
 }

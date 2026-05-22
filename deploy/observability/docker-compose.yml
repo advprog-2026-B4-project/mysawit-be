@@ -5,6 +5,8 @@ services:
     environment:
       BACKEND_HOST_MAIN: ${BACKEND_HOST_MAIN:-mysawit-be-main}
       BACKEND_HOST_STAGING: ${BACKEND_HOST_STAGING:-mysawit-be-staging}
+      BACKEND_METRICS_PORT: ${BACKEND_METRICS_PORT:-8080}
+      BACKEND_STAGING_METRICS_PORT: ${BACKEND_STAGING_METRICS_PORT:-8080}
     entrypoint:
       - /bin/sh
       - -c

@@ -49,6 +49,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JAVA_OPTS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005
+      LOG_FILE: /opt/mysawit/logs/mysawit-be.log
       # Set to true in production; false here so k6 load tests are not blocked by rate limiting
       RATE_LIMIT_ENABLED: "false"
     volumes:

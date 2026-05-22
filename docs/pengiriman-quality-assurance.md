@@ -36,6 +36,52 @@ Kedua repository sudah menjalankan workflow pada branch `staging` setelah PR Pen
 
 Catatan untuk lint frontend: warning yang tersisa berasal dari penggunaan `<img>` pada modul Panen, bukan dari modul Pengiriman. Lint tetap selesai dengan `0 errors`.
 
+## Profiling and Monitoring Evidence
+
+Profiling dilakukan menggunakan Apache JMeter 5.6.3 dengan baseline workload:
+
+- 10 virtual users.
+- Ramp-up 10 seconds.
+- Loop count 5.
+- Total 200 requests untuk endpoint mandor Pengiriman.
+- Endpoint yang diuji:
+  - `GET /api/pengiriman/mandor/supir`
+  - `GET /api/pengiriman/mandor/panen`
+  - `GET /api/pengiriman/mandor/recommendation`
+  - `GET /api/pengiriman/mandor/active`
+
+| Evidence | File |
+| --- | --- |
+| JMeter profiling sebelum optimisasi | [`profiling-before-optimization-mandor-summary-report.png`](pengiriman-profiling-and-monitoring/profiling-before-optimization-mandor-summary-report.png) |
+| Docker resource monitoring sebelum optimisasi saat load test | [`monitoring-before-optimization-docker-stats-under-load.png`](pengiriman-profiling-and-monitoring/monitoring-before-optimization-docker-stats-under-load.png) |
+| JMeter profiling setelah optimisasi | [`profiling-after-optimization-mandor-summary-report.png`](pengiriman-profiling-and-monitoring/profiling-after-optimization-mandor-summary-report.png) |
+| Docker resource monitoring setelah optimisasi saat load test | [`monitoring-after-optimization-docker-stats-under-load.png`](pengiriman-profiling-and-monitoring/monitoring-after-optimization-docker-stats-under-load.png) |
+
+Ringkasan hasil profiling:
+
+| Metric | Before Optimization | After Optimization |
+| --- | ---: | ---: |
+| Total samples | 200 | 200 |
+| Total average response time | 11 ms | 11 ms |
+| Total max response time | 35 ms | 34 ms |
+| Error rate | 0.00% | 0.00% |
+| Throughput | 21.6/sec | 21.7/sec |
+
+Ringkasan hasil monitoring container backend saat load test:
+
+| Metric | Before Optimization | After Optimization |
+| --- | ---: | ---: |
+| CPU usage | 36.26% | 17.94% |
+| Memory usage | 421.3 MiB | 451.9 MiB |
+| Memory percentage | 5.41% | 5.80% |
+
+Optimisasi yang diterapkan:
+
+- Lookup assigned panen pada `listAssignablePanenForMandor` diubah dari `List.contains()` menjadi `Set` lookup, sehingga pengecekan panen yang sudah masuk pengiriman lain menjadi constant-time lookup.
+- Proses knapsack pada `recommendAssignmentForMandor` diberi early stopping ketika kapasitas maksimum sudah tercapai.
+
+Pada dataset demo kecil, response time tetap berada di rentang rendah dan error rate tetap 0.00%. Perubahan ini terutama meningkatkan scalability dan menjaga stabilitas endpoint ketika jumlah kandidat panen bertambah.
+
 ## Security and Quality Controls
 
 ### Role-Based Access Control

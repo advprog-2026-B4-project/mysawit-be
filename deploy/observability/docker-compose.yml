@@ -5,21 +5,9 @@ services:
     environment:
       BACKEND_HOST_MAIN: ${BACKEND_HOST_MAIN:-mysawit-be-main}
       BACKEND_HOST_STAGING: ${BACKEND_HOST_STAGING:-mysawit-be-staging}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        sed \
-          -e "s/BACKEND_HOST_MAIN_PLACEHOLDER/$${BACKEND_HOST_MAIN}/g" \
-          -e "s/BACKEND_HOST_STAGING_PLACEHOLDER/$${BACKEND_HOST_STAGING}/g" \
-          /tmp/prometheus.yml.tmpl > /tmp/prometheus.yml
-        echo "=== Config ===" && cat /tmp/prometheus.yml
-        exec /bin/prometheus \
-          --config.file=/tmp/prometheus.yml \
-          --storage.tsdb.path=/prometheus \
-          --storage.tsdb.retention.time=30d \
-          --web.enable-lifecycle
+    entrypoint: ["/bin/sh", "/tmp/prometheus-entrypoint.sh"]
     volumes:
+      - ./prometheus-entrypoint.sh:/tmp/prometheus-entrypoint.sh:ro
       - ./prometheus.yml:/tmp/prometheus.yml.tmpl:ro
       - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus

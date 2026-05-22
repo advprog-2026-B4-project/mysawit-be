@@ -12,14 +12,15 @@ services:
         sed \
           -e "s|\$${BACKEND_HOST_MAIN}|$$BACKEND_HOST_MAIN|g" \
           -e "s|\$${BACKEND_HOST_STAGING}|$$BACKEND_HOST_STAGING|g" \
-          /etc/observability/prometheus.yml > /tmp/prometheus.yml
+          /etc/prometheus/prometheus.tmpl > /tmp/prometheus.yml
         exec /bin/prometheus \
           --config.file=/tmp/prometheus.yml \
           --storage.tsdb.path=/prometheus \
           --storage.tsdb.retention.time=30d \
           --web.enable-lifecycle
     volumes:
-      - .:/etc/observability:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.tmpl:ro
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     networks:
       - coolify
@@ -51,13 +52,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
     volumes:
       - grafana_data:/var/lib/grafana
-      - .:/etc/observability:ro
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        ln -sf /etc/observability/provisioning /etc/grafana/provisioning
-        exec /run.sh
+      - ./provisioning:/etc/grafana/provisioning:ro
     ports:
       - "3000"
     networks:

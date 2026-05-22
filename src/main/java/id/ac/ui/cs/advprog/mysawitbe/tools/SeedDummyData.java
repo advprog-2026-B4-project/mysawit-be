@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 /**
  * Seeds comprehensive dummy data for all modules:
@@ -20,23 +21,36 @@ import java.util.UUID;
  */
 public class SeedDummyData {
 
+    private static final Logger LOG = Logger.getLogger(SeedDummyData.class.getName());
+
     private static final String DEFAULT_DB_URL      = "jdbc:postgresql://localhost:5432/mysawit";
     private static final String DEFAULT_DB_USERNAME  = "postgres";
     private static final String DEFAULT_DB_PASSWORD  = "postgres";
-    private static final String TEST_PASSWORD        = "Worker@12345";
+
+    private static final String ROLE_MANDOR = "MANDOR";
+    private static final String ROLE_BURUH = "BURUH";
+    private static final String ROLE_SUPIR = "SUPIR";
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_REJECTED = "REJECTED";
+    private static final String REF_PENGIRIMAN = "PENGIRIMAN";
+    private static final String REF_PANEN = "PANEN";
+
+    private static final String TEST_PASSWORD =
+            System.getenv().getOrDefault("SEED_USER_PASSWORD", "change-me-in-dev-only");
 
     // ── Users ────────────────────────────────────────────────────────────────
 
     private static final SeedUser MANDOR = new SeedUser(
-            uid("user-mandor"),   "mandor_dummy",   "mandor.dummy@mysawit.id",   "Pak Mandor", "MANDOR", null);
+            uid("user-mandor"),   "mandor_dummy",   "mandor.dummy@mysawit.id",   "Pak Mandor", ROLE_MANDOR, null);
     private static final SeedUser BURUH_1 = new SeedUser(
-            uid("user-buruh-1"), "buruh_dummy_1",  "buruh.dummy1@mysawit.id",   "Budi Buruh", "BURUH",  MANDOR.userId());
+            uid("user-buruh-1"), "buruh_dummy_1",  "buruh.dummy1@mysawit.id",   "Budi Buruh", ROLE_BURUH,  MANDOR.userId());
     private static final SeedUser BURUH_2 = new SeedUser(
-            uid("user-buruh-2"), "buruh_dummy_2",  "buruh.dummy2@mysawit.id",   "Sari Buruh", "BURUH",  MANDOR.userId());
+            uid("user-buruh-2"), "buruh_dummy_2",  "buruh.dummy2@mysawit.id",   "Sari Buruh", ROLE_BURUH,  MANDOR.userId());
     private static final SeedUser SUPIR_1 = new SeedUser(
-            uid("user-supir-1"), "supir_dummy_1",  "supir.dummy1@mysawit.id",   "Anton Supir","SUPIR",  null);
+            uid("user-supir-1"), "supir_dummy_1",  "supir.dummy1@mysawit.id",   "Anton Supir", ROLE_SUPIR,  null);
     private static final SeedUser SUPIR_2 = new SeedUser(
-            uid("user-supir-2"), "supir_dummy_2",  "supir.dummy2@mysawit.id",   "Dewi Supir", "SUPIR",  null);
+            uid("user-supir-2"), "supir_dummy_2",  "supir.dummy2@mysawit.id",   "Dewi Supir", ROLE_SUPIR,  null);
 
     private static final List<SeedUser> ALL_USERS = List.of(MANDOR, BURUH_1, BURUH_2, SUPIR_1, SUPIR_2);
 
@@ -72,7 +86,7 @@ public class SeedDummyData {
                 upsertNotifications(conn);
                 conn.commit();
                 printSummary(payrolls, panenList, pengirimanList);
-            } catch (Exception e) {
+            } catch (SQLException e) {
                 conn.rollback();
                 throw e;
             }
@@ -81,7 +95,7 @@ public class SeedDummyData {
 
     // ── Reset (FK-safe order) ─────────────────────────────────────────────────
 
-    private static void resetDummyData(Connection conn) throws Exception {
+    private static void resetDummyData(Connection conn) throws SQLException {
         List<UUID> userIds  = ALL_USERS.stream().map(SeedUser::userId).toList();
         List<UUID> buruhIds = List.of(BURUH_1.userId(), BURUH_2.userId());
 
@@ -106,7 +120,7 @@ public class SeedDummyData {
         exec(conn, "DELETE FROM users          WHERE user_id = ?", userIds);
     }
 
-    private static void exec(Connection conn, String sql, List<UUID> ids) throws Exception {
+    private static void exec(Connection conn, String sql, List<UUID> ids) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (UUID id : ids) {
                 ps.setObject(1, id);
@@ -118,7 +132,7 @@ public class SeedDummyData {
 
     // ── Users ─────────────────────────────────────────────────────────────────
 
-    private static void upsertUsers(Connection conn, String hashedPassword) throws Exception {
+    private static void upsertUsers(Connection conn, String hashedPassword) throws SQLException {
         String sql = """
                 INSERT INTO users (user_id, username, email, name, password, role, mandor_id, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -148,7 +162,7 @@ public class SeedDummyData {
 
     // ── Kebun ─────────────────────────────────────────────────────────────────
 
-    private static void upsertKebun(Connection conn) throws Exception {
+    private static void upsertKebun(Connection conn) throws SQLException {
         // kebun rows
         String kebunSql = """
                 INSERT INTO kebun (kebun_id, nama, kode, luas, mandor_id)
@@ -210,7 +224,7 @@ public class SeedDummyData {
         }
     }
 
-    private static void insertCoords(PreparedStatement ps, UUID kebunId, int[][] coords) throws Exception {
+    private static void insertCoords(PreparedStatement ps, UUID kebunId, int[][] coords) throws SQLException {
         for (int i = 0; i < coords.length; i++) {
             ps.setObject(1, kebunId);
             ps.setInt(2, i);
@@ -227,15 +241,15 @@ public class SeedDummyData {
         List<SeedPanen> list = new ArrayList<>();
 
         // BURUH_1: APPROVED, PENDING, REJECTED
-        list.add(panen("panen-b1-1", BURUH_1, KEBUN_1_ID, 130, "APPROVED", null,  now.minusDays(10)));
-        list.add(panen("panen-b1-2", BURUH_1, KEBUN_1_ID, 90,  "APPROVED", null,  now.minusDays(7)));
-        list.add(panen("panen-b1-3", BURUH_1, KEBUN_1_ID, 75,  "PENDING",  null,  now.minusDays(1)));
-        list.add(panen("panen-b1-4", BURUH_1, KEBUN_1_ID, 55,  "REJECTED", "Berat tidak sesuai timbangan mandor", now.minusDays(5)));
+        list.add(panen("panen-b1-1", BURUH_1, KEBUN_1_ID, 130, STATUS_APPROVED, null,  now.minusDays(10)));
+        list.add(panen("panen-b1-2", BURUH_1, KEBUN_1_ID, 90,  STATUS_APPROVED, null,  now.minusDays(7)));
+        list.add(panen("panen-b1-3", BURUH_1, KEBUN_1_ID, 75,  STATUS_PENDING,  null,  now.minusDays(1)));
+        list.add(panen("panen-b1-4", BURUH_1, KEBUN_1_ID, 55,  STATUS_REJECTED, "Berat tidak sesuai timbangan mandor", now.minusDays(5)));
 
         // BURUH_2: APPROVED, APPROVED, PENDING
-        list.add(panen("panen-b2-1", BURUH_2, KEBUN_2_ID, 110, "APPROVED", null,  now.minusDays(9)));
-        list.add(panen("panen-b2-2", BURUH_2, KEBUN_2_ID, 145, "APPROVED", null,  now.minusDays(6)));
-        list.add(panen("panen-b2-3", BURUH_2, KEBUN_2_ID, 80,  "PENDING",  null,  now.minusDays(2)));
+        list.add(panen("panen-b2-1", BURUH_2, KEBUN_2_ID, 110, STATUS_APPROVED, null,  now.minusDays(9)));
+        list.add(panen("panen-b2-2", BURUH_2, KEBUN_2_ID, 145, STATUS_APPROVED, null,  now.minusDays(6)));
+        list.add(panen("panen-b2-3", BURUH_2, KEBUN_2_ID, 80,  STATUS_PENDING,  null,  now.minusDays(2)));
 
         return list;
     }
@@ -245,12 +259,12 @@ public class SeedDummyData {
         List<String> photos = new ArrayList<>();
         photos.add(photoUrl(uid(key), 1));
         photos.add(photoUrl(uid(key), 2));
-        if ("PENDING".equals(status)) photos.add(photoUrl(uid(key), 3));
+        if (STATUS_PENDING.equals(status)) photos.add(photoUrl(uid(key), 3));
         return new SeedPanen(uid(key), buruh.userId(), kebunId, weight, status, rejectionReason,
                 "Hasil panen " + key, createdAt, photos);
     }
 
-    private static void upsertPanen(Connection conn, List<SeedPanen> list) throws Exception {
+    private static void upsertPanen(Connection conn, List<SeedPanen> list) throws SQLException {
         String harvestSql = """
                 INSERT INTO harvest_reports (id, buruh_id, kebun_id, weight, description, status,
                     rejection_reason, created_at, harvest_date)
@@ -313,7 +327,7 @@ public class SeedDummyData {
 
         // Collect approved panen IDs to link
         List<UUID> approvedPanen = panenList.stream()
-                .filter(p -> "APPROVED".equals(p.status()))
+                .filter(p -> STATUS_APPROVED.equals(p.status()))
                 .map(SeedPanen::panenId)
                 .toList();
 
@@ -341,7 +355,7 @@ public class SeedDummyData {
         return list;
     }
 
-    private static void upsertPengiriman(Connection conn, List<SeedPengiriman> list) throws Exception {
+    private static void upsertPengiriman(Connection conn, List<SeedPengiriman> list) throws SQLException {
         String pgSql = """
                 INSERT INTO pengiriman (pengiriman_id, supir_id, mandor_id, status,
                     total_weight, accepted_weight, status_reason, timestamp)
@@ -399,25 +413,25 @@ public class SeedDummyData {
         // Same event auto-approves MANDOR payroll immediately (autoApprovePayroll).
         // REJECTED panen fires no event → no payroll row at all.
         for (SeedPanen p : panenList) {
-            if (!"APPROVED".equals(p.status())) continue;
+            if (!STATUS_APPROVED.equals(p.status())) continue;
             LocalDateTime processedAt = p.createdAt().plusDays(1);
             String buruhRef = "PAY-DUMMY-B-" + p.panenId().toString().substring(0, 8).toUpperCase();
             String mandorRef = "PAY-DUMMY-M-" + p.panenId().toString().substring(0, 8).toUpperCase();
 
             rows.add(new SeedPayroll(
                     uid("payroll-buruh-" + p.panenId()),
-                    p.buruhId(), "BURUH",
-                    p.panenId(), "PANEN",
+                    p.buruhId(), ROLE_BURUH,
+                    p.panenId(), REF_PANEN,
                     p.weight(), 10_000,
-                    "APPROVED", null, processedAt, p.createdAt(), buruhRef));
+                    STATUS_APPROVED, null, processedAt, p.createdAt(), buruhRef));
 
             // MANDOR payroll auto-approved in same event (autoApprovePayroll)
             rows.add(new SeedPayroll(
                     uid("payroll-mandor-panen-" + p.panenId()),
-                    MANDOR.userId(), "MANDOR",
-                    p.panenId(), "PANEN",
+                    MANDOR.userId(), ROLE_MANDOR,
+                    p.panenId(), REF_PANEN,
                     p.weight(), 12_000,
-                    "APPROVED", null, processedAt, p.createdAt(), mandorRef));
+                    STATUS_APPROVED, null, processedAt, p.createdAt(), mandorRef));
         }
 
         // Pengiriman payrolls mirror the real event handlers:
@@ -431,29 +445,29 @@ public class SeedDummyData {
                     // SUPIR payroll created; admin has not yet approved it
                     rows.add(new SeedPayroll(
                             uid("payroll-supir-" + pg.pengirimanId()),
-                            pg.supirId(), "SUPIR",
-                            pg.pengirimanId(), "PENGIRIMAN",
+                            pg.supirId(), ROLE_SUPIR,
+                            pg.pengirimanId(), REF_PENGIRIMAN,
                             pg.totalWeight(), 8_000,
-                            "PENDING", null, null, pg.timestamp(), null));
+                            STATUS_PENDING, null, null, pg.timestamp(), null));
                 }
                 case "APPROVED_ADMIN" -> {
                     // SUPIR payroll approved (from earlier APPROVED_MANDOR step, totalWeight)
                     LocalDateTime supirProcessed = pg.timestamp().plusDays(1);
                     rows.add(new SeedPayroll(
                             uid("payroll-supir-" + pg.pengirimanId()),
-                            pg.supirId(), "SUPIR",
-                            pg.pengirimanId(), "PENGIRIMAN",
+                            pg.supirId(), ROLE_SUPIR,
+                            pg.pengirimanId(), REF_PENGIRIMAN,
                             pg.totalWeight(), 8_000,
-                            "APPROVED", null, supirProcessed, pg.timestamp(),
+                            STATUS_APPROVED, null, supirProcessed, pg.timestamp(),
                             "PAY-DUMMY-S-" + pg.pengirimanId().toString().substring(0, 8).toUpperCase()));
                     // MANDOR payroll from onPengirimanProcessedByAdmin (acceptedWeight), approved by admin
                     LocalDateTime mandorProcessed = supirProcessed.plusHours(2);
                     rows.add(new SeedPayroll(
                             uid("payroll-mandor-pg-" + pg.pengirimanId()),
-                            MANDOR.userId(), "MANDOR",
-                            pg.pengirimanId(), "PENGIRIMAN",
+                            MANDOR.userId(), ROLE_MANDOR,
+                            pg.pengirimanId(), REF_PENGIRIMAN,
                             pg.acceptedWeight(), 12_000,
-                            "APPROVED", null, mandorProcessed, pg.timestamp(),
+                            STATUS_APPROVED, null, mandorProcessed, pg.timestamp(),
                             "PAY-DUMMY-MG-" + pg.pengirimanId().toString().substring(0, 8).toUpperCase()));
                 }
                 default -> { /* IN_TRANSIT / ASSIGNED — no payroll yet */ }
@@ -463,7 +477,7 @@ public class SeedDummyData {
         return rows;
     }
 
-    private static void upsertPayrolls(Connection conn, List<SeedPayroll> payrolls) throws Exception {
+    private static void upsertPayrolls(Connection conn, List<SeedPayroll> payrolls) throws SQLException {
         String sql = """
                 INSERT INTO payrolls (
                     payroll_id, user_id, role, reference_id, reference_type,
@@ -517,7 +531,7 @@ public class SeedDummyData {
                 """;
         try (PreparedStatement ps = conn.prepareStatement(txSql)) {
             for (SeedPayroll r : payrolls) {
-                if (!"APPROVED".equals(r.status())) continue;
+                if (!STATUS_APPROVED.equals(r.status())) continue;
                 ps.setObject(1, uid("tx-" + r.payrollId()));
                 ps.setObject(2, r.userId());
                 ps.setObject(3, r.payrollId());
@@ -530,7 +544,7 @@ public class SeedDummyData {
         }
     }
 
-    private static void upsertWallets(Connection conn, List<SeedPayroll> payrolls) throws Exception {
+    private static void upsertWallets(Connection conn, List<SeedPayroll> payrolls) throws SQLException {
         String sql = """
                 INSERT INTO wallets (user_id, balance, updated_at)
                 VALUES (?, ?, NOW())
@@ -539,7 +553,7 @@ public class SeedDummyData {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (SeedUser u : ALL_USERS) {
                 long balance = payrolls.stream()
-                        .filter(r -> u.userId().equals(r.userId()) && "APPROVED".equals(r.status()))
+                        .filter(r -> u.userId().equals(r.userId()) && STATUS_APPROVED.equals(r.status()))
                         .mapToLong(SeedPayroll::netAmount)
                         .sum();
                 ps.setObject(1, u.userId());
@@ -552,7 +566,7 @@ public class SeedDummyData {
 
     // ── Notifications ──────────────────────────────────────────────────────────
 
-    private static void upsertNotifications(Connection conn) throws Exception {
+    private static void upsertNotifications(Connection conn) throws SQLException {
         LocalDateTime now = LocalDateTime.now();
         String sql = """
                 INSERT INTO notifications (notification_id, user_id, title, description, is_read, timestamp)
@@ -587,7 +601,7 @@ public class SeedDummyData {
     }
 
     private static void addNotif(PreparedStatement ps, String key, SeedUser user,
-                                  String title, String desc, boolean isRead, LocalDateTime time) throws Exception {
+                                  String title, String desc, boolean isRead, LocalDateTime time) throws SQLException {
         ps.setObject(1, uid("notif-" + key));
         ps.setObject(2, user.userId());
         ps.setString(3, title);
@@ -599,7 +613,7 @@ public class SeedDummyData {
 
     // ── Validation ────────────────────────────────────────────────────────────
 
-    private static void verifyAdminExists(Connection conn) throws Exception {
+    private static void verifyAdminExists(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM users WHERE role = 'ADMIN' LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
             if (!rs.next()) throw new IllegalStateException("No ADMIN user found. Run migrations first.");
@@ -610,17 +624,17 @@ public class SeedDummyData {
 
     private static void printSummary(List<SeedPayroll> payrolls, List<SeedPanen> panenList,
                                       List<SeedPengiriman> pgList) {
-        System.out.println("=== seedDummyData complete ===");
-        System.out.println("Users    : " + ALL_USERS.size() + " (password: " + TEST_PASSWORD + ")");
-        System.out.println("Kebun    : 2");
-        System.out.println("Panen    : " + panenList.size());
-        System.out.println("Pengiriman: " + pgList.size());
-        System.out.println("Payrolls : " + payrolls.size());
-        System.out.println();
-        System.out.println("Credentials:");
-        System.out.printf("  %-8s  admin@mysawit.id            Admin@12345  (from migration)%n", "[ADMIN]");
+        LOG.info("=== seedDummyData complete ===");
+        LOG.info("Users    : " + ALL_USERS.size() + " (password: " + TEST_PASSWORD + ")");
+        LOG.info("Kebun    : 2");
+        LOG.info("Panen    : " + panenList.size());
+        LOG.info("Pengiriman: " + pgList.size());
+        LOG.info("Payrolls : " + payrolls.size());
+        LOG.info("");
+        LOG.info("Credentials:");
+        LOG.info(String.format("  %-8s  admin@mysawit.id            Admin@12345  (from migration)%n", "[ADMIN]"));
         for (SeedUser u : ALL_USERS) {
-            System.out.printf("  %-8s  %-30s  %s%n", "[" + u.role() + "]", u.email(), TEST_PASSWORD);
+            LOG.info(String.format("  %-8s  %-30s  %s%n", "[" + u.role() + "]", u.email(), TEST_PASSWORD));
         }
     }
 

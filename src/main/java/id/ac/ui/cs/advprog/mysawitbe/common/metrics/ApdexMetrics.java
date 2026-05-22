@@ -62,7 +62,7 @@ public class ApdexMetrics {
      *
      * @param responseTimeMs response time in milliseconds
      */
-    public void record(long responseTimeMs) {
+    public void logRequest(long responseTimeMs) {
         if (responseTimeMs <= thresholdMs) {
             satisfiedCounter.increment();
         } else if (responseTimeMs <= thresholdMs * 4) {

@@ -47,8 +47,7 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANDOR', 'BURUH', 'SUPIR')")
     public ResponseEntity<ApiResponse<UserDTO>> getCurrentUser(
             @RequestAttribute("userId") UUID userId) {
-        UserDTO user = userQueryUseCase.getUserById(userId);
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return getUser(userId);
     }
 
     /** PUT /api/users/{userId} */

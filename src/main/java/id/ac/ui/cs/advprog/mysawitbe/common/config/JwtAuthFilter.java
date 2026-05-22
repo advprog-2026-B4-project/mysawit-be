@@ -19,6 +19,9 @@ import java.util.UUID;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final String ATTR_USER_ID = "userId";
+    private static final String ATTR_ROLE = "role";
+
     private final JwtService jwtService;
 
     public JwtAuthFilter(JwtService jwtService) {
@@ -40,10 +43,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String userId = jwtService.extractUserId(token);
                 String role   = jwtService.extractRole(token);
 
-                MDC.put("userId", userId);
-                MDC.put("role", role);
+                MDC.put(ATTR_USER_ID, userId);
+                MDC.put(ATTR_ROLE, role);
 
-                request.setAttribute("userId", UUID.fromString(userId));
+                request.setAttribute(ATTR_USER_ID, UUID.fromString(userId));
 
                 var auth = new UsernamePasswordAuthenticationToken(
                         userId,
@@ -57,8 +60,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove("userId");
-            MDC.remove("role");
+            MDC.remove(ATTR_USER_ID);
+            MDC.remove(ATTR_ROLE);
         }
     }
 }

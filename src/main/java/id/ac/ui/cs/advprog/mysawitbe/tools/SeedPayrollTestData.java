@@ -8,12 +8,14 @@ import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 /**
  * Seeds deterministic test data for payroll features:
@@ -28,18 +30,30 @@ import java.util.UUID;
  */
 public class SeedPayrollTestData {
 
+    private static final Logger LOG = Logger.getLogger(SeedPayrollTestData.class.getName());
+
     private static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/mysawit";
     private static final String DEFAULT_DB_USERNAME = "postgres";
     private static final String DEFAULT_DB_PASSWORD = "postgres";
 
-    private static final String TEST_PASSWORD = "Worker@12345";
+    private static final String ROLE_MANDOR = "MANDOR";
+    private static final String ROLE_BURUH = "BURUH";
+    private static final String ROLE_SUPIR = "SUPIR";
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_REJECTED = "REJECTED";
+    private static final String REF_PENGIRIMAN = "PENGIRIMAN";
+    private static final String REF_PANEN = "PANEN";
+
+    private static final String TEST_PASSWORD =
+            System.getenv().getOrDefault("SEED_USER_PASSWORD", "change-me-in-dev-only");
 
     private static final SeedUser MANDOR = new SeedUser(
             stableUuid("user-mandor"),
             "mandor_seed",
             "mandor.seed@mysawit.id",
             "Mandor Seed",
-            "MANDOR",
+            ROLE_MANDOR,
             null
     );
 
@@ -48,7 +62,7 @@ public class SeedPayrollTestData {
             "buruh_seed_1",
             "buruh.seed1@mysawit.id",
             "Buruh Seed 1",
-            "BURUH",
+            ROLE_BURUH,
             MANDOR.userId()
     );
 
@@ -57,7 +71,7 @@ public class SeedPayrollTestData {
             "buruh_seed_2",
             "buruh.seed2@mysawit.id",
             "Buruh Seed 2",
-            "BURUH",
+            ROLE_BURUH,
             MANDOR.userId()
     );
 
@@ -66,7 +80,7 @@ public class SeedPayrollTestData {
             "supir_seed",
             "supir.seed@mysawit.id",
             "Supir Seed",
-            "SUPIR",
+            ROLE_SUPIR,
             null
     );
 
@@ -96,14 +110,14 @@ public class SeedPayrollTestData {
 
                 conn.commit();
                 printSummary(payrolls, panenRows);
-            } catch (Exception e) {
+            } catch (SQLException e) {
                 conn.rollback();
                 throw e;
             }
         }
     }
 
-    private static void verifyAdminExists(Connection conn) throws Exception {
+    private static void verifyAdminExists(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("SELECT user_id FROM users WHERE role = 'ADMIN' LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
             if (!rs.next()) {
@@ -112,7 +126,7 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static void upsertSeedUsers(Connection conn, String hashedPassword) throws Exception {
+    private static void upsertSeedUsers(Connection conn, String hashedPassword) throws SQLException {
         String sql = """
                 INSERT INTO users (user_id, username, email, name, password, role, mandor_id, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -141,7 +155,7 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static void resetSeedFeatureData(Connection conn) throws Exception {
+    private static void resetSeedFeatureData(Connection conn) throws SQLException {
         List<UUID> userIds = WORKER_USERS.stream().map(SeedUser::userId).toList();
         List<UUID> buruhIds = List.of(BURUH_1.userId(), BURUH_2.userId());
 
@@ -180,12 +194,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-1-approved"),
                 BURUH_1.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-1"),
-                "PANEN",
+                REF_PANEN,
                 120,
                 10_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(6),
                 now.minusDays(7),
@@ -195,12 +209,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-1-pending"),
                 BURUH_1.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-2"),
-                "PANEN",
+                REF_PANEN,
                 80,
                 10_000,
-                "PENDING",
+                STATUS_PENDING,
                 null,
                 null,
                 now.minusDays(2),
@@ -210,12 +224,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-1-rejected"),
                 BURUH_1.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-3"),
-                "PANEN",
+                REF_PANEN,
                 60,
                 10_000,
-                "REJECTED",
+                STATUS_REJECTED,
                 "Data panen tidak valid",
                 now.minusDays(4),
                 now.minusDays(5),
@@ -225,12 +239,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-2-approved"),
                 BURUH_2.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-4"),
-                "PANEN",
+                REF_PANEN,
                 95,
                 10_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(3),
                 now.minusDays(4),
@@ -240,12 +254,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-supir-approved"),
                 SUPIR.userId(),
-                "SUPIR",
+                ROLE_SUPIR,
                 stableUuid("ref-pengiriman-1"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 200,
                 8_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(2),
                 now.minusDays(3),
@@ -255,12 +269,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-supir-pending"),
                 SUPIR.userId(),
-                "SUPIR",
+                ROLE_SUPIR,
                 stableUuid("ref-pengiriman-2"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 150,
                 8_000,
-                "PENDING",
+                STATUS_PENDING,
                 null,
                 null,
                 now.minusDays(1),
@@ -270,12 +284,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-mandor-approved"),
                 MANDOR.userId(),
-                "MANDOR",
+                ROLE_MANDOR,
                 stableUuid("ref-pengiriman-3"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 220,
                 12_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(7),
                 now.minusDays(8),
@@ -285,12 +299,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-mandor-rejected"),
                 MANDOR.userId(),
-                "MANDOR",
+                ROLE_MANDOR,
                 stableUuid("ref-pengiriman-4"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 180,
                 12_000,
-                "REJECTED",
+                STATUS_REJECTED,
                 "Dokumen pendukung pengiriman belum lengkap",
                 now.minusDays(5),
                 now.minusDays(6),
@@ -300,12 +314,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-2-pending"),
                 BURUH_2.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-5"),
-                "PANEN",
+                REF_PANEN,
                 140,
                 10_000,
-                "PENDING",
+                STATUS_PENDING,
                 null,
                 null,
                 now.minusDays(1),
@@ -315,12 +329,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-2-approved-2"),
                 BURUH_2.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-6"),
-                "PANEN",
+                REF_PANEN,
                 75,
                 10_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(8),
                 now.minusDays(9),
@@ -330,12 +344,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-1-approved-2"),
                 BURUH_1.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-7"),
-                "PANEN",
+                REF_PANEN,
                 155,
                 10_000,
-                "APPROVED",
+                STATUS_APPROVED,
                 null,
                 now.minusDays(9),
                 now.minusDays(10),
@@ -345,12 +359,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-buruh-1-pending-2"),
                 BURUH_1.userId(),
-                "BURUH",
+                ROLE_BURUH,
                 stableUuid("ref-panen-8"),
-                "PANEN",
+                REF_PANEN,
                 90,
                 10_000,
-                "PENDING",
+                STATUS_PENDING,
                 null,
                 null,
                 now.minusHours(12),
@@ -360,12 +374,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-supir-rejected"),
                 SUPIR.userId(),
-                "SUPIR",
+                ROLE_SUPIR,
                 stableUuid("ref-pengiriman-5"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 160,
                 8_000,
-                "REJECTED",
+                STATUS_REJECTED,
                 "Surat jalan belum divalidasi",
                 now.minusDays(4),
                 now.minusDays(5),
@@ -375,12 +389,12 @@ public class SeedPayrollTestData {
         rows.add(new SeedPayroll(
                 stableUuid("payroll-mandor-pending"),
                 MANDOR.userId(),
-                "MANDOR",
+                ROLE_MANDOR,
                 stableUuid("ref-pengiriman-6"),
-                "PENGIRIMAN",
+                REF_PENGIRIMAN,
                 205,
                 12_000,
-                "PENDING",
+                STATUS_PENDING,
                 null,
                 null,
                 now.minusDays(2),
@@ -394,7 +408,7 @@ public class SeedPayrollTestData {
         List<SeedPanen> rows = new ArrayList<>();
 
         for (SeedPayroll payroll : payrolls) {
-            if (!"PANEN".equals(payroll.referenceType())) {
+            if (!REF_PANEN.equals(payroll.referenceType())) {
                 continue;
             }
 
@@ -403,7 +417,7 @@ public class SeedPayrollTestData {
             photoUrls.add(seedPhotoUrl(payroll.referenceId(), 2));
 
             // Pending payroll gets one extra photo so UI can exercise >2 evidence previews.
-            if ("PENDING".equals(payroll.status())) {
+            if (STATUS_PENDING.equals(payroll.status())) {
                 photoUrls.add(seedPhotoUrl(payroll.referenceId(), 3));
             }
 
@@ -422,7 +436,7 @@ public class SeedPayrollTestData {
         return rows;
     }
 
-    private static void upsertPanenWithPhotos(Connection conn, List<SeedPanen> panenRows) throws Exception {
+    private static void upsertPanenWithPhotos(Connection conn, List<SeedPanen> panenRows) throws SQLException {
         if (panenRows.isEmpty()) {
             return;
         }
@@ -496,7 +510,7 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static UUID resolveSeedKebunId(Connection conn) throws Exception {
+    private static UUID resolveSeedKebunId(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("SELECT kebun_id FROM kebun ORDER BY kebun_id LIMIT 1");
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
@@ -527,7 +541,7 @@ public class SeedPayrollTestData {
         return kebunId;
     }
 
-    private static void upsertPayrolls(Connection conn, List<SeedPayroll> payrolls) throws Exception {
+    private static void upsertPayrolls(Connection conn, List<SeedPayroll> payrolls) throws SQLException {
         String sql = """
                 INSERT INTO payrolls (
                     payroll_id, user_id, role, reference_id, reference_type,
@@ -571,7 +585,7 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static void upsertWalletTransactions(Connection conn, List<SeedPayroll> payrolls) throws Exception {
+    private static void upsertWalletTransactions(Connection conn, List<SeedPayroll> payrolls) throws SQLException {
         String sql = """
                 INSERT INTO wallet_transactions (
                     transaction_id, user_id, payroll_id, amount, type, created_at
@@ -587,7 +601,7 @@ public class SeedPayrollTestData {
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (SeedPayroll row : payrolls) {
-                if (!"APPROVED".equals(row.status())) {
+                if (!STATUS_APPROVED.equals(row.status())) {
                     continue;
                 }
 
@@ -604,7 +618,7 @@ public class SeedPayrollTestData {
         }
     }
 
-    private static void upsertWallets(Connection conn, List<SeedPayroll> payrolls) throws Exception {
+    private static void upsertWallets(Connection conn, List<SeedPayroll> payrolls) throws SQLException {
         record BalanceRow(UUID userId, int balance) {}
 
         List<BalanceRow> balances = WORKER_USERS.stream()
@@ -612,7 +626,7 @@ public class SeedPayrollTestData {
                         user.userId(),
                         payrolls.stream()
                                 .filter(payroll -> user.userId().equals(payroll.userId()))
-                                .filter(payroll -> "APPROVED".equals(payroll.status()))
+                                .filter(payroll -> STATUS_APPROVED.equals(payroll.status()))
                                 .mapToInt(SeedPayroll::netAmount)
                                 .sum()
                 ))
@@ -637,26 +651,26 @@ public class SeedPayrollTestData {
     }
 
     private static void printSummary(List<SeedPayroll> payrolls, List<SeedPanen> panenRows) {
-        System.out.println("Seed payroll test data generated successfully.");
-        System.out.println();
-        System.out.println("Total payroll rows seeded: " + payrolls.size());
-        System.out.println("Total PANEN rows with evidence photos: " + panenRows.size());
-        System.out.println();
-        System.out.println("=== Load test credentials ===");
-        System.out.println();
-        System.out.println("ADMIN (from V2 migration — not seeded here):");
-        System.out.println("  email:    admin@mysawit.id");
-        System.out.println("  password: Admin@12345");
-        System.out.println();
-        System.out.println("Worker accounts (password: " + TEST_PASSWORD + "):");
+        LOG.info("Seed payroll test data generated successfully.");
+        LOG.info("");
+        LOG.info("Total payroll rows seeded: " + payrolls.size());
+        LOG.info("Total PANEN rows with evidence photos: " + panenRows.size());
+        LOG.info("");
+        LOG.info("=== Load test credentials ===");
+        LOG.info("");
+        LOG.info("ADMIN (from V2 migration — not seeded here):");
+        LOG.info("  email:    admin@mysawit.id");
+        LOG.info("  password: Admin@12345");
+        LOG.info("");
+        LOG.info("Worker accounts (password: " + TEST_PASSWORD + "):");
         for (SeedUser user : WORKER_USERS) {
-            System.out.println("  [" + user.role() + "] " + user.email() + "  (userId: " + user.userId() + ")");
+            LOG.info("  [" + user.role() + "] " + user.email() + "  (userId: " + user.userId() + ")");
         }
-        System.out.println();
-        System.out.println("Pending payroll IDs for ADMIN process testing:");
+        LOG.info("");
+        LOG.info("Pending payroll IDs for ADMIN process testing:");
         payrolls.stream()
-                .filter(payroll -> "PENDING".equals(payroll.status()))
-                .forEach(payroll -> System.out.println("  - " + payroll.payrollId()));
+                .filter(payroll -> STATUS_PENDING.equals(payroll.status()))
+                .forEach(payroll -> LOG.info("  - " + payroll.payrollId()));
     }
 
     private static Timestamp toTimestamp(LocalDateTime value) {

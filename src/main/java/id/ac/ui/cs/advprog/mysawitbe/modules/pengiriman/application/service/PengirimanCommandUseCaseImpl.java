@@ -229,33 +229,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         );
 
         String normalizedReason = normalizeOptionalReason(reason);
-        switch (status) {
-            case APPROVED_ADMIN -> {
-                if (acceptedWeight != current.totalWeight()) {
-                    throw new IllegalArgumentException("Full approve harus menerima seluruh berat pengiriman.");
-                }
-                if (normalizedReason != null) {
-                    throw new IllegalArgumentException("Full approve tidak memerlukan alasan.");
-                }
-            }
-            case PARTIAL -> {
-                if (acceptedWeight <= 0 || acceptedWeight >= current.totalWeight()) {
-                    throw new IllegalArgumentException("Partial accept harus menerima sebagian berat di antara 0 dan total pengiriman.");
-                }
-                if (normalizedReason == null) {
-                    throw new IllegalArgumentException("Alasan wajib diisi untuk partial accept.");
-                }
-            }
-            case REJECTED_ADMIN -> {
-                if (acceptedWeight != 0) {
-                    throw new IllegalArgumentException("Rejected delivery harus memiliki accepted weight 0.");
-                }
-                if (normalizedReason == null) {
-                    throw new IllegalArgumentException("Alasan penolakan admin wajib diisi.");
-                }
-            }
-            default -> throw new IllegalArgumentException("Status admin tidak valid.");
-        }
+        validateAdminAction(current, status, acceptedWeight, normalizedReason);
 
         PengirimanDTO saved = saveUpdated(current, builder -> {
             builder.status(status.name());
@@ -263,13 +237,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(normalizedReason);
         });
 
-        if (status == PengirimanStatus.APPROVED_ADMIN) {
-            statusApprovedAdminCounter.increment();
-        } else if (status == PengirimanStatus.PARTIAL) {
-            statusPartialCounter.increment();
-        } else {
-            statusRejectedAdminCounter.increment();
-        }
+        incrementStatusCounter(status);
         eventPublisher.publish(new PengirimanProcessedByAdminEvent(
                 saved.pengirimanId(),
                 saved.mandorId(),
@@ -277,6 +245,54 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
                 toEventStatus(status)
         ));
         return saved;
+    }
+
+    private void validateAdminAction(PengirimanDTO current, PengirimanStatus status,
+                                     int acceptedWeight, String normalizedReason) {
+        switch (status) {
+            case APPROVED_ADMIN -> validateFullApprove(current, acceptedWeight, normalizedReason);
+            case PARTIAL       -> validatePartialAccept(current, acceptedWeight, normalizedReason);
+            case REJECTED_ADMIN -> validateAdminReject(current, acceptedWeight, normalizedReason);
+            default -> throw new IllegalArgumentException("Status admin tidak valid.");
+        }
+    }
+
+    private void validateFullApprove(PengirimanDTO current, int acceptedWeight, String reason) {
+        if (acceptedWeight != current.totalWeight()) {
+            throw new IllegalArgumentException("Full approve harus menerima seluruh berat pengiriman.");
+        }
+        if (reason != null) {
+            throw new IllegalArgumentException("Full approve tidak memerlukan alasan.");
+        }
+    }
+
+    private void validatePartialAccept(PengirimanDTO current, int acceptedWeight, String reason) {
+        if (acceptedWeight <= 0 || acceptedWeight >= current.totalWeight()) {
+            throw new IllegalArgumentException(
+                    "Partial accept harus menerima sebagian berat di antara 0 dan total pengiriman.");
+        }
+        if (reason == null) {
+            throw new IllegalArgumentException("Alasan wajib diisi untuk partial accept.");
+        }
+    }
+
+    private void validateAdminReject(PengirimanDTO current, int acceptedWeight, String reason) {
+        if (acceptedWeight != 0) {
+            throw new IllegalArgumentException("Rejected delivery harus memiliki accepted weight 0.");
+        }
+        if (reason == null) {
+            throw new IllegalArgumentException("Alasan penolakan admin wajib diisi.");
+        }
+    }
+
+    private void incrementStatusCounter(PengirimanStatus status) {
+        if (status == PengirimanStatus.APPROVED_ADMIN) {
+            statusApprovedAdminCounter.increment();
+        } else if (status == PengirimanStatus.PARTIAL) {
+            statusPartialCounter.increment();
+        } else {
+            statusRejectedAdminCounter.increment();
+        }
     }
 
     private PengirimanDTO requirePengiriman(UUID pengirimanId) {

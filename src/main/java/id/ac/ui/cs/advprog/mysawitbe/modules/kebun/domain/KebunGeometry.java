@@ -20,8 +20,10 @@ public final class KebunGeometry {
 
     private static BoundingBox calculateBoundingBox(List<CoordinateDTO> coords) {
 
-        int minLat = Integer.MAX_VALUE, maxLat = Integer.MIN_VALUE;
-        int minLng = Integer.MAX_VALUE, maxLng = Integer.MIN_VALUE;
+        int minLat = Integer.MAX_VALUE;
+        int maxLat = Integer.MIN_VALUE;
+        int minLng = Integer.MAX_VALUE;
+        int maxLng = Integer.MIN_VALUE;
 
         for (CoordinateDTO c : coords) {
             minLat = Math.min(minLat, c.lat());

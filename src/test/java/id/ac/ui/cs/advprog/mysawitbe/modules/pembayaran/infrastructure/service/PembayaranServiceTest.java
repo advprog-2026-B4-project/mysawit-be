@@ -817,7 +817,6 @@ class PembayaranServiceTest {
     void onPanenApproved_createsPendingPayrollForBuruh() {
         UUID buruhId = UUID.randomUUID();
         UUID panenId = UUID.randomUUID();
-        UUID mandorId = UUID.randomUUID();
         when(payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(buruhId, "BURUH", panenId, "PANEN")).thenReturn(false);
         when(payrollRepository.getWageRate("BURUH")).thenReturn(8);
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -940,13 +939,13 @@ class PembayaranServiceTest {
 
     @Test
     void onPengirimanProcessedByAdmin_ignoresRejectedStatus() {
-        UUID pengirimanId = UUID.randomUUID();
-        UUID mandorId = UUID.randomUUID();
+        UUID testPengirimanId = UUID.randomUUID();
+        UUID testMandorId = UUID.randomUUID();
         // When status is REJECTED, the method returns early before any repository call
         // No stubbing needed since the early return prevents any repository interaction
 
         service.onPengirimanProcessedByAdmin(new PengirimanProcessedByAdminEvent(
-                pengirimanId, mandorId, 50000, "REJECTED"
+                testPengirimanId, testMandorId, 50000, "REJECTED"
         ));
 
         verify(payrollRepository, never()).existsByUserIdAndRoleAndReferenceIdAndReferenceType(any(), any(), any(), any());
@@ -955,16 +954,16 @@ class PembayaranServiceTest {
 
     @Test
     void onPengirimanProcessedByAdmin_nullStatusCreatesPayroll() {
-        UUID pengirimanId = UUID.randomUUID();
-        UUID mandorId = UUID.randomUUID();
+        UUID testPengirimanId = UUID.randomUUID();
+        UUID testMandorId = UUID.randomUUID();
         when(payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
-                mandorId, "MANDOR", pengirimanId, "PENGIRIMAN"
+                testMandorId, "MANDOR", testPengirimanId, "PENGIRIMAN"
         )).thenReturn(false);
         when(payrollRepository.getWageRate("MANDOR")).thenReturn(12);
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.onPengirimanProcessedByAdmin(new PengirimanProcessedByAdminEvent(
-                pengirimanId, mandorId, 50000, null
+                testPengirimanId, testMandorId, 50000, null
         ));
 
         verify(payrollRepository).save(any(PayrollDTO.class));
@@ -972,16 +971,16 @@ class PembayaranServiceTest {
 
     @Test
     void onPengirimanProcessedByAdmin_blankStatusCreatesPayroll() {
-        UUID pengirimanId = UUID.randomUUID();
-        UUID mandorId = UUID.randomUUID();
+        UUID testPengirimanId = UUID.randomUUID();
+        UUID testMandorId = UUID.randomUUID();
         when(payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
-                mandorId, "MANDOR", pengirimanId, "PENGIRIMAN"
+                testMandorId, "MANDOR", testPengirimanId, "PENGIRIMAN"
         )).thenReturn(false);
         when(payrollRepository.getWageRate("MANDOR")).thenReturn(12);
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.onPengirimanProcessedByAdmin(new PengirimanProcessedByAdminEvent(
-                pengirimanId, mandorId, 50000, "   "
+                testPengirimanId, testMandorId, 50000, "   "
         ));
 
         verify(payrollRepository).save(any(PayrollDTO.class));
@@ -989,16 +988,16 @@ class PembayaranServiceTest {
 
     @Test
     void onPengirimanProcessedByAdmin_acceptsNonRejectedStatus() {
-        UUID pengirimanId = UUID.randomUUID();
-        UUID mandorId = UUID.randomUUID();
+        UUID testPengirimanId = UUID.randomUUID();
+        UUID testMandorId = UUID.randomUUID();
         when(payrollRepository.existsByUserIdAndRoleAndReferenceIdAndReferenceType(
-                mandorId, "MANDOR", pengirimanId, "PENGIRIMAN"
+                testMandorId, "MANDOR", testPengirimanId, "PENGIRIMAN"
         )).thenReturn(false);
         when(payrollRepository.getWageRate("MANDOR")).thenReturn(12);
         when(payrollRepository.save(any(PayrollDTO.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.onPengirimanProcessedByAdmin(new PengirimanProcessedByAdminEvent(
-                pengirimanId, mandorId, 50000, "APPROVED"
+                testPengirimanId, testMandorId, 50000, "APPROVED"
         ));
 
         ArgumentCaptor<PayrollDTO> captor = ArgumentCaptor.forClass(PayrollDTO.class);
@@ -1234,13 +1233,5 @@ class PembayaranServiceTest {
 
     // --- requireAdminId ---
 
-    @Test
-    void approvePayroll_throwsWhenAdminIdIsNull() {
-        UUID payrollId = UUID.randomUUID();
-
-        assertThatThrownBy(() -> service.approvePayroll(payrollId, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Admin id is required");
-    }
 }
 

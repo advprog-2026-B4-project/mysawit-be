@@ -18,7 +18,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     scrape_interval: 15s
     static_configs:
-      - targets: ['${BACKEND_HOST_MAIN}:${BACKEND_METRICS_PORT:-8080}']
+      - targets: ['${BACKEND_HOST_MAIN}:9090']
         labels:
           app: mysawit-be
           env: main
@@ -32,7 +32,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     scrape_interval: 15s
     static_configs:
-      - targets: ['${BACKEND_HOST_STAGING}:${BACKEND_STAGING_METRICS_PORT:-8080}']
+      - targets: ['${BACKEND_HOST_STAGING}:9090']
         labels:
           app: mysawit-be
           env: staging

@@ -123,10 +123,10 @@ class VariabelPokokControllerTest {
                 VariableKey.UPAH_BURUH, BURUH_DTO.label(), BURUH_DTO.description(), 25_000);
         when(commandUseCase.updateVariabelPokok(VariableKey.UPAH_BURUH, 25_000)).thenReturn(updated);
 
-        VariabelPokokController controller = new VariabelPokokController(queryUseCase, commandUseCase);
+        VariabelPokokController testController = new VariabelPokokController(queryUseCase, commandUseCase);
         UpdateVariabelPokokRequest body = new UpdateVariabelPokokRequest(null, 25_000);
 
-        var response = controller.update(VariableKey.UPAH_BURUH, body);
+        var response = testController.update(VariableKey.UPAH_BURUH, body);
         
         org.junit.jupiter.api.Assertions.assertEquals(200, response.getStatusCode().value());
         org.junit.jupiter.api.Assertions.assertEquals(25_000, response.getBody().data().value());

@@ -14,6 +14,12 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 @Component
 public class AuthMetricsAspect {
 
+    private static final String METRIC_LOGIN_TOTAL = "auth.login.total";
+    private static final String METRIC_REGISTER_TOTAL = "auth.register.total";
+    private static final String TAG_METHOD = "method";
+    private static final String TAG_RESULT = "result";
+    private static final String TAG_ROLE = "role";
+
     private final Timer loginEmailTimer;
     private final Counter loginEmailSuccessCounter;
     private final Counter loginEmailFailureCounter;
@@ -29,36 +35,36 @@ public class AuthMetricsAspect {
                 .publishPercentiles(0.5, 0.95)
                 .register(registry);
 
-        this.loginEmailSuccessCounter = Counter.builder("auth.login.total")
-                .tag("method", "EMAIL").tag("result", "success")
+        this.loginEmailSuccessCounter = Counter.builder(METRIC_LOGIN_TOTAL)
+                .tag(TAG_METHOD, "EMAIL").tag(TAG_RESULT, "success")
                 .description("Login email berhasil")
                 .register(registry);
 
-        this.loginEmailFailureCounter = Counter.builder("auth.login.total")
-                .tag("method", "EMAIL").tag("result", "failure")
+        this.loginEmailFailureCounter = Counter.builder(METRIC_LOGIN_TOTAL)
+                .tag(TAG_METHOD, "EMAIL").tag(TAG_RESULT, "failure")
                 .description("Login email gagal (wrong password / not found)")
                 .register(registry);
 
-        this.registerBuruhCounter = Counter.builder("auth.register.total")
-                .tag("role", "BURUH")
+        this.registerBuruhCounter = Counter.builder(METRIC_REGISTER_TOTAL)
+                .tag(TAG_ROLE, "BURUH")
                 .description("Registrasi user baru per role")
                 .register(registry);
 
-        this.registerSupirCounter = Counter.builder("auth.register.total")
-                .tag("role", "SUPIR")
+        this.registerSupirCounter = Counter.builder(METRIC_REGISTER_TOTAL)
+                .tag(TAG_ROLE, "SUPIR")
                 .register(registry);
 
-        this.registerMandorCounter = Counter.builder("auth.register.total")
-                .tag("role", "MANDOR")
+        this.registerMandorCounter = Counter.builder(METRIC_REGISTER_TOTAL)
+                .tag(TAG_ROLE, "MANDOR")
                 .register(registry);
 
-        this.googleCallbackCounter = Counter.builder("auth.login.total")
-                .tag("method", "GOOGLE").tag("result", "callback")
+        this.googleCallbackCounter = Counter.builder(METRIC_LOGIN_TOTAL)
+                .tag(TAG_METHOD, "GOOGLE").tag(TAG_RESULT, "callback")
                 .description("Google OAuth callback berhasil diproses")
                 .register(registry);
 
-        this.googleCompleteCounter = Counter.builder("auth.login.total")
-                .tag("method", "GOOGLE").tag("result", "complete")
+        this.googleCompleteCounter = Counter.builder(METRIC_LOGIN_TOTAL)
+                .tag(TAG_METHOD, "GOOGLE").tag(TAG_RESULT, "complete")
                 .description("Google OAuth registration completion berhasil")
                 .register(registry);
     }

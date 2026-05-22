@@ -16,6 +16,8 @@ import java.util.Map;
 public class OAuth2RedisAdapter implements OAuth2Port {
 
     private static final String STATE_PREFIX = "oauth2:state:";
+    private static final String KEY_ACCESS_TOKEN = "access_token";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final StringRedisTemplate  redisTemplate;
     private final WebClient            webClient;
@@ -35,7 +37,7 @@ public class OAuth2RedisAdapter implements OAuth2Port {
     @Override
     public String generateState() {
         byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
+        SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
@@ -76,12 +78,12 @@ public class OAuth2RedisAdapter implements OAuth2Port {
                 .bodyToMono(Map.class)
                 .block();
 
-        if (tokenResponse == null || !tokenResponse.containsKey("access_token")) {
+        if (tokenResponse == null || !tokenResponse.containsKey(KEY_ACCESS_TOKEN)) {
             throw new IllegalStateException("Failed to exchange OAuth2 code for token");
         }
 
         // 2. Fetch user info from Google
-        String accessToken = (String) tokenResponse.get("access_token");
+        String accessToken = (String) tokenResponse.get(KEY_ACCESS_TOKEN);
         Map<?, ?> userInfo = webClient.get()
                 .uri("https://www.googleapis.com/oauth2/v3/userinfo")
                 .header("Authorization", "Bearer " + accessToken)
@@ -94,7 +96,7 @@ public class OAuth2RedisAdapter implements OAuth2Port {
         }
 
         Map<String, Object> result = new HashMap<>();
-        result.put("access_token", accessToken);
+        result.put(KEY_ACCESS_TOKEN, accessToken);
         result.put("email",        userInfo.get("email"));
         result.put("name",         userInfo.get("name"));
         result.put("picture",      userInfo.get("picture"));

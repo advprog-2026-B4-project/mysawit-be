@@ -16,6 +16,7 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.exception.StorageException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner.Builder;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -81,11 +83,10 @@ class R2StorageAdapterTest {
             properties.setAccessKey(null);
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_ACCESS_KEY"));
+            assertTrue(ex.getMessage().contains("R2_ACCESS_KEY"));
         }
 
         @Test
@@ -93,11 +94,10 @@ class R2StorageAdapterTest {
             properties.setAccessKey("   ");
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_ACCESS_KEY"));
+            assertTrue(ex.getMessage().contains("R2_ACCESS_KEY"));
         }
 
         @Test
@@ -105,11 +105,10 @@ class R2StorageAdapterTest {
             properties.setSecretKey(null);
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_SECRET_KEY"));
+            assertTrue(ex.getMessage().contains("R2_SECRET_KEY"));
         }
 
         @Test
@@ -117,11 +116,10 @@ class R2StorageAdapterTest {
             properties.setEndpoint(null);
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_ENDPOINT"));
+            assertTrue(ex.getMessage().contains("R2_ENDPOINT"));
         }
 
         @Test
@@ -129,11 +127,10 @@ class R2StorageAdapterTest {
             properties.setBucket(null);
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_BUCKET"));
+            assertTrue(ex.getMessage().contains("R2_BUCKET"));
         }
 
         @Test
@@ -141,11 +138,10 @@ class R2StorageAdapterTest {
             properties.setSecretKey("");
             adapter = new R2StorageAdapter(properties);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
+            IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> adapter.uploadFile("test".getBytes(), "file.jpg", "image/jpeg"));
 
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertTrue(ex.getCause().getMessage().contains("R2_SECRET_KEY"));
+            assertTrue(ex.getMessage().contains("R2_SECRET_KEY"));
         }
     }
 
@@ -215,10 +211,10 @@ class R2StorageAdapterTest {
 
             try (MockedStatic<S3Client> s3Static = mockStatic(S3Client.class)) {
                 s3Static.when(S3Client::builder).thenReturn(mockS3Builder);
-                doThrow(new RuntimeException("S3 error"))
+                doThrow(S3Exception.builder().message("S3 error").build())
                         .when(mockS3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 
-                RuntimeException ex = assertThrows(RuntimeException.class,
+                StorageException ex = assertThrows(StorageException.class,
                         () -> adapter.uploadFile(data, "panen/test.jpg", "image/jpeg"));
 
                 assertTrue(ex.getMessage().contains("File upload failed"));
@@ -347,10 +343,10 @@ class R2StorageAdapterTest {
             try (MockedStatic<S3Presigner> presignerStatic = mockStatic(S3Presigner.class);
                  MockedStatic<S3Client> s3Static = mockStatic(S3Client.class)) {
                 presignerStatic.when(S3Presigner::builder).thenReturn(mockPresignerBuilder);
-                doThrow(new RuntimeException("S3 presign error"))
+                doThrow(S3Exception.builder().message("S3 presign error").build())
                         .when(mockPresigner).presignPutObject(any(PutObjectPresignRequest.class));
 
-                RuntimeException ex = assertThrows(RuntimeException.class,
+                StorageException ex = assertThrows(StorageException.class,
                         () -> adapter.getPresignedUrl("panen/file.jpg", "image/jpeg"));
 
                 assertTrue(ex.getMessage().contains("Presigned URL generation failed"));
@@ -442,10 +438,10 @@ class R2StorageAdapterTest {
         void deleteFile_s3ThrowsException_wrapsInRuntimeException() {
             try (MockedStatic<S3Client> s3Static = mockStatic(S3Client.class)) {
                 s3Static.when(S3Client::builder).thenReturn(mockS3Builder);
-                doThrow(new RuntimeException("S3 delete error"))
+                doThrow(S3Exception.builder().message("S3 delete error").build())
                         .when(mockS3Client).deleteObject(any(DeleteObjectRequest.class));
 
-                RuntimeException ex = assertThrows(RuntimeException.class,
+                StorageException ex = assertThrows(StorageException.class,
                         () -> adapter.deleteFile("panen/old-file.jpg"));
 
                 assertTrue(ex.getMessage().contains("File deletion failed"));

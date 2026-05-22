@@ -50,5 +50,7 @@ class MysawitBeApplicationTests {
 
     @Test
     void contextLoads() {
+        // Spring context loads successfully if no exception is thrown before reaching this point.
+        // All bean wiring, configuration, and autowiring is validated by the framework.
     }
 }

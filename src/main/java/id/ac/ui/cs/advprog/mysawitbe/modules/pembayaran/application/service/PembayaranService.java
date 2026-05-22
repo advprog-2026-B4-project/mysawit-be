@@ -43,6 +43,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -128,7 +129,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		Set<UUID> panenIds = page.items().stream()
 				.filter(p -> REFERENCE_PANEN.equalsIgnoreCase(p.referenceType()))
 				.map(PayrollDTO::referenceId)
-				.filter(id -> id != null)
+                .filter(Objects::nonNull)
 				.collect(Collectors.toSet());
 
 		Map<UUID, PanenDTO> panenById = panenIds.isEmpty()

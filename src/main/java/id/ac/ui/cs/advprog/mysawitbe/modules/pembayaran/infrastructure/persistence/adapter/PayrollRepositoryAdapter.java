@@ -31,6 +31,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PayrollRepositoryAdapter implements PayrollRepositoryPort {
 
+    private static final String FIELD_CREATED_AT = "createdAt";
+    private static final String FIELD_USER_ID = "userId";
+    private static final String FIELD_STATUS = "status";
+
 	private final PayrollJpaRepository payrollJpaRepository;
 	private final VariabelPokokJpaRepository variabelPokokJpaRepository;
 	private final PayrollMapper payrollMapper;
@@ -115,20 +119,20 @@ public class PayrollRepositoryAdapter implements PayrollRepositoryPort {
 		return (root, query, builder) -> {
 			List<Predicate> predicates = new ArrayList<>();
 
-			if (userId != null) {
-				predicates.add(builder.equal(root.get("userId"), userId));
-			}
+            if (userId != null) {
+                predicates.add(builder.equal(root.get(FIELD_USER_ID), userId));
+            }
 
-			if (startDate != null) {
-				predicates.add(builder.greaterThanOrEqualTo(root.get("createdAt"), startDate.atStartOfDay()));
-			}
+            if (startDate != null) {
+                predicates.add(builder.greaterThanOrEqualTo(root.get(FIELD_CREATED_AT), startDate.atStartOfDay()));
+            }
 
-			if (endDate != null) {
-				predicates.add(builder.lessThanOrEqualTo(root.get("createdAt"), toEndOfDay(endDate)));
-			}
+            if (endDate != null) {
+                predicates.add(builder.lessThanOrEqualTo(root.get(FIELD_CREATED_AT), toEndOfDay(endDate)));
+            }
 
-			if (status != null && !status.isBlank()) {
-				predicates.add(builder.equal(root.get("status"), status.trim().toUpperCase(Locale.ROOT)));
+            if (status != null && !status.isBlank()) {
+                predicates.add(builder.equal(root.get(FIELD_STATUS), status.trim().toUpperCase(Locale.ROOT)));
 			}
 
 			return builder.and(predicates.toArray(new Predicate[0]));
@@ -138,7 +142,7 @@ public class PayrollRepositoryAdapter implements PayrollRepositoryPort {
 	private Pageable toPageable(int page, int size) {
 		int sanitizedPage = Math.max(page, 0);
 		int sanitizedSize = size <= 0 ? 10 : Math.min(size, 100);
-		return PageRequest.of(sanitizedPage, sanitizedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return PageRequest.of(sanitizedPage, sanitizedSize, Sort.by(Sort.Direction.DESC, FIELD_CREATED_AT));
 	}
 
 	private PayrollPageDTO toPayrollPage(Page<PayrollEntity> page) {

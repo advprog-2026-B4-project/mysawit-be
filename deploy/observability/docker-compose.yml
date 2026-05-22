@@ -5,6 +5,7 @@ services:
     environment:
       BACKEND_HOST_MAIN: ${BACKEND_HOST_MAIN:-mysawit-be-main}
       BACKEND_HOST_STAGING: ${BACKEND_HOST_STAGING:-mysawit-be-staging}
+    entrypoint: ["/bin/sh", "/etc/prometheus/entrypoint.sh"]
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus

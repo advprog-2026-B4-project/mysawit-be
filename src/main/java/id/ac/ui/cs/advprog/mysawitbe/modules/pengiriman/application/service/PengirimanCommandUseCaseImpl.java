@@ -159,7 +159,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
 
         if (newStatus == PengirimanStatus.IN_TRANSIT) {
             statusInTransitCounter.increment();
-        } else if (newStatus == PengirimanStatus.TIBA) {
+        } else {
             statusTibaCounter.increment();
             eventPublisher.publish(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
         }
@@ -263,11 +263,12 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(normalizedReason);
         });
 
-        switch (status) {
-            case APPROVED_ADMIN -> statusApprovedAdminCounter.increment();
-            case PARTIAL        -> statusPartialCounter.increment();
-            case REJECTED_ADMIN -> statusRejectedAdminCounter.increment();
-            default -> { /* no-op */ }
+        if (status == PengirimanStatus.APPROVED_ADMIN) {
+            statusApprovedAdminCounter.increment();
+        } else if (status == PengirimanStatus.PARTIAL) {
+            statusPartialCounter.increment();
+        } else {
+            statusRejectedAdminCounter.increment();
         }
         eventPublisher.publish(new PengirimanProcessedByAdminEvent(
                 saved.pengirimanId(),

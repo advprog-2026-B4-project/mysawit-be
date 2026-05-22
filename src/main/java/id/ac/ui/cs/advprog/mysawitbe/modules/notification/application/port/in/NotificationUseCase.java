@@ -10,8 +10,6 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.Pengir
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanStatusTibaEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.event.PayrollProcessedEvent;
 
-import org.springframework.context.event.EventListener;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -41,27 +39,19 @@ public interface NotificationUseCase {
      */
     List<NotificationDTO> listNotifications(UUID userId);
 
-    @EventListener
     void onBuruhAssigned(BuruhAssignedEvent event);
 
-    @EventListener
     void onMandorAssignedToKebun(MandorAssignedToKebunEvent event);
 
-    @EventListener
     void onPanenApproved(PanenApprovedEvent event);
 
-    @EventListener
     void onPanenRejected(PanenRejectedEvent event);
 
-    @EventListener
     void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event);
 
-    @EventListener
     void onPengirimanStatusTiba(PengirimanStatusTibaEvent event);
 
-    @EventListener
     void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event);
 
-    @EventListener
     void onPayrollProcessed(PayrollProcessedEvent event);
 }

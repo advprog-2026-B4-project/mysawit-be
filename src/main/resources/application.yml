@@ -3,6 +3,8 @@ api:
     path: /api/kebun
 
 app:
+  apdex:
+    threshold-ms: ${APDEX_THRESHOLD_MS:500}
   midtrans:
     server-key: ${MIDTRANS_SERVER_KEY:}
     client-key: ${MIDTRANS_CLIENT_KEY:}
@@ -10,6 +12,10 @@ app:
     snap-base-url: ${MIDTRANS_SNAP_BASE_URL:https://app.sandbox.midtrans.com/snap/v1}
     notification-url: ${MIDTRANS_NOTIFICATION_URL:http://localhost:8080/api/pembayaran/wallet/midtrans-callback}
     redirect-url: ${APP_FRONTEND_URL:http://localhost:3000}/admin/pembayaran/topup/status
+    connect-timeout-ms: ${MIDTRANS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${MIDTRANS_READ_TIMEOUT_MS:10000}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
   name: MySawit
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
@@ -37,8 +43,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: 10000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -73,9 +82,45 @@ spring:
         #     authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
         #     token-uri: https://oauth2.googleapis.com/token
         #     user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: ${TOMCAT_THREADS_MAX:100}
+      min-spare: ${TOMCAT_THREADS_MIN:10}
+    accept-count: 50
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9090}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: mysawit-be
+    distribution:
+      percentiles-histogram:
+        panen.create.duration: true
+        panen.approve.duration: true
+        http.server.requests: true
+      percentiles:
+        panen.create.duration: 0.5,0.95,0.99
+        panen.approve.duration: 0.5,0.95,0.99
+        http.server.requests: 0.5,0.95,0.99
+      slo:
+        panen.create.duration: 300ms
+        panen.approve.duration: 300ms
 
 logging:
   level:

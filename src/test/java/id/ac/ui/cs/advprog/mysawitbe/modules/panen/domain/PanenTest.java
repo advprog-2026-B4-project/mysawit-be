@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PanenTest {
@@ -38,7 +39,7 @@ class PanenTest {
         @Test
         void shouldCreatePanenWithStatusPending() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "Panen sawit blok A", 150, timestamp, photoUrls);
+                    "Panen sawit blok A", Weight.of(150), timestamp, photoUrls);
 
             assertEquals(PanenStatus.PENDING, panen.getStatus());
         }
@@ -46,9 +47,9 @@ class PanenTest {
         @Test
         void shouldGenerateRandomPanenId() {
             Panen panen1 = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "Panen 1", 100, timestamp, photoUrls);
+                    "Panen 1", Weight.of(100), timestamp, photoUrls);
             Panen panen2 = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "Panen 2", 100, timestamp, photoUrls);
+                    "Panen 2", Weight.of(100), timestamp, photoUrls);
 
             assertNotNull(panen1.getPanenId());
             assertNotEquals(panen1.getPanenId(), panen2.getPanenId());
@@ -57,20 +58,20 @@ class PanenTest {
         @Test
         void shouldStoreAllFieldsCorrectly() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "Panen sawit blok A", 150, timestamp, photoUrls);
+                    "Panen sawit blok A", Weight.of(150), timestamp, photoUrls);
 
             assertEquals(buruhId,             panen.getBuruhId());
             assertEquals("Budi",              panen.getBuruhName());
             assertEquals(kebunId,             panen.getKebunId());
             assertEquals("Panen sawit blok A",panen.getDescription());
-            assertEquals(150,                 panen.getWeight());
+            assertEquals(Weight.of(150),                 panen.getWeight());
             assertEquals(timestamp,           panen.getTimestamp());
         }
 
         @Test
         void shouldHaveNullRejectionReasonOnCreation() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             assertNull(panen.getRejectionReason());
         }
@@ -78,7 +79,7 @@ class PanenTest {
         @Test
         void shouldConvertPhotoUrlsToPanenPhotos() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             assertEquals(photoUrls.size(), panen.getPhotos().size());
             List<String> resultUrls = panen.getPhotos().stream()
@@ -90,7 +91,7 @@ class PanenTest {
         @Test
         void shouldCreatePanenWithEmptyPhotoList() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, List.of());
+                    "desc", Weight.of(100), timestamp, List.of());
 
             assertNotNull(panen.getPhotos());
             assertTrue(panen.getPhotos().isEmpty());
@@ -106,7 +107,7 @@ class PanenTest {
         @Test
         void shouldChangeStatusToApprovedWhenPending() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             panen.approve();
 
@@ -119,7 +120,7 @@ class PanenTest {
             // (simulasikan via constructor langsung karena state REJECTED
             //  tidak bisa diubah dari APPROVED/REJECTED via domain method)
             Panen panen = new Panen(UUID.randomUUID(), buruhId, "Budi", kebunId,
-                    "desc", 100, PanenStatus.PENDING, "alasan sebelumnya",
+                    "desc", Weight.of(100), PanenStatus.PENDING, "alasan sebelumnya",
                     timestamp, List.of());
 
             panen.approve();
@@ -130,7 +131,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenApprovingApprovedPanen() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
             panen.approve();
 
             IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -142,7 +143,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenApprovingRejectedPanen() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
             panen.reject("Berat tidak sesuai");
 
             IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -161,7 +162,7 @@ class PanenTest {
         @Test
         void shouldChangeStatusToRejectedWhenPending() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             panen.reject("Berat tidak sesuai");
 
@@ -171,7 +172,7 @@ class PanenTest {
         @Test
         void shouldStoreRejectionReason() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             panen.reject("Berat tidak sesuai");
 
@@ -181,7 +182,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenRejectingApprovedPanen() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
             panen.approve();
 
             IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -193,7 +194,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenRejectingRejectedPanen() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
             panen.reject("alasan pertama");
 
             IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -205,7 +206,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenRejectionReasonIsNull() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> panen.reject(null));
@@ -215,7 +216,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenRejectionReasonIsBlank() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> panen.reject("   "));
@@ -225,7 +226,7 @@ class PanenTest {
         @Test
         void shouldThrowWhenRejectionReasonIsEmptyString() {
             Panen panen = Panen.catatBaru(buruhId, "Budi", kebunId,
-                    "desc", 100, timestamp, photoUrls);
+                    "desc", Weight.of(100), timestamp, photoUrls);
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> panen.reject(""));

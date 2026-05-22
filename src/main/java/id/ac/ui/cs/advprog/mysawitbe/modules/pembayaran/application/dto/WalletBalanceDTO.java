@@ -9,6 +9,6 @@ import java.util.UUID;
  */
 public record WalletBalanceDTO(
         UUID userId,
-        int balance,
+        long balance,
         LocalDateTime lastUpdated
 ) {}

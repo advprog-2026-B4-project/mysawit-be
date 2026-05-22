@@ -639,19 +639,19 @@ public class SeedPayrollTestData {
     private static void printSummary(List<SeedPayroll> payrolls, List<SeedPanen> panenRows) {
         System.out.println("Seed payroll test data generated successfully.");
         System.out.println();
-        System.out.println("Worker login password: " + TEST_PASSWORD);
-        System.out.println();
         System.out.println("Total payroll rows seeded: " + payrolls.size());
         System.out.println("Total PANEN rows with evidence photos: " + panenRows.size());
         System.out.println();
-
+        System.out.println("=== Load test credentials ===");
+        System.out.println();
+        System.out.println("ADMIN (from V2 migration — not seeded here):");
+        System.out.println("  email:    admin@mysawit.id");
+        System.out.println("  password: Admin@12345");
+        System.out.println();
+        System.out.println("Worker accounts (password: " + TEST_PASSWORD + "):");
         for (SeedUser user : WORKER_USERS) {
-            System.out.println("User " + user.role() + ":");
-            System.out.println("  email: " + user.email());
-            System.out.println("  username: " + user.username());
-            System.out.println("  userId: " + user.userId());
+            System.out.println("  [" + user.role() + "] " + user.email() + "  (userId: " + user.userId() + ")");
         }
-
         System.out.println();
         System.out.println("Pending payroll IDs for ADMIN process testing:");
         payrolls.stream()

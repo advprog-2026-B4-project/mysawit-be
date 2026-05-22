@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.adapter;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletBalanceDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTransactionDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.WalletEntity;
@@ -53,7 +54,7 @@ class WalletRepositoryAdapterTest {
         payrollId = UUID.randomUUID();
         walletEntity = WalletEntity.builder()
                 .userId(userId)
-                .balance(100000)
+                .balance(Money.of(100000))
                 .updatedAt(LocalDateTime.now())
                 .build();
         walletBalanceDto = new WalletBalanceDTO(userId, 100000, LocalDateTime.now());
@@ -78,7 +79,7 @@ class WalletRepositoryAdapterTest {
         void whenWalletDoesNotExist_createsWalletWithZeroBalance() {
             WalletEntity newWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(0)
+                    .balance(Money.ZERO)
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO newBalanceDto = new WalletBalanceDTO(userId, 0, LocalDateTime.now());
@@ -93,7 +94,7 @@ class WalletRepositoryAdapterTest {
             verify(walletJpaRepository).findById(userId);
             ArgumentCaptor<WalletEntity> captor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository).save(captor.capture());
-            assertThat(captor.getValue().getBalance()).isEqualTo(0);
+            assertThat(captor.getValue().getBalance()).isEqualTo(Money.ZERO);
         }
     }
 
@@ -105,7 +106,7 @@ class WalletRepositoryAdapterTest {
             int creditAmount = 50000;
             WalletEntity updatedWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(150000)
+                    .balance(Money.of(150000))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, 150000, LocalDateTime.now());
@@ -119,12 +120,12 @@ class WalletRepositoryAdapterTest {
             assertThat(result.balance()).isEqualTo(150000);
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository).save(walletCaptor.capture());
-            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(150000);
+            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(Money.of(150000));
 
             ArgumentCaptor<WalletTransactionEntity> txCaptor = ArgumentCaptor.forClass(WalletTransactionEntity.class);
             verify(walletTransactionJpaRepository).save(txCaptor.capture());
             WalletTransactionEntity savedTx = txCaptor.getValue();
-            assertThat(savedTx.getAmount()).isEqualTo(creditAmount);
+            assertThat(savedTx.getAmount()).isEqualTo(Money.of(creditAmount));
             assertThat(savedTx.getType()).isEqualTo("CREDIT");
             assertThat(savedTx.getPayrollId()).isEqualTo(payrollId);
             assertThat(savedTx.getUserId()).isEqualTo(userId);
@@ -149,7 +150,7 @@ class WalletRepositoryAdapterTest {
             int creditAmount = 50000;
             WalletEntity newWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(creditAmount)
+                    .balance(Money.of(creditAmount))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, creditAmount, LocalDateTime.now());
@@ -163,12 +164,12 @@ class WalletRepositoryAdapterTest {
             assertThat(result.balance()).isEqualTo(creditAmount);
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository, atLeast(1)).save(walletCaptor.capture());
-            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(creditAmount);
+            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(Money.of(creditAmount));
 
             ArgumentCaptor<WalletTransactionEntity> txCaptor = ArgumentCaptor.forClass(WalletTransactionEntity.class);
             verify(walletTransactionJpaRepository).save(txCaptor.capture());
             WalletTransactionEntity savedTx = txCaptor.getValue();
-            assertThat(savedTx.getAmount()).isEqualTo(creditAmount);
+            assertThat(savedTx.getAmount()).isEqualTo(Money.of(creditAmount));
             assertThat(savedTx.getType()).isEqualTo("CREDIT");
             assertThat(savedTx.getUserId()).isEqualTo(userId);
             assertThat(savedTx.getPayrollId()).isEqualTo(payrollId);
@@ -183,7 +184,7 @@ class WalletRepositoryAdapterTest {
             int debitAmount = 30000;
             WalletEntity updatedWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(70000)
+                    .balance(Money.of(70000))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, 70000, LocalDateTime.now());
@@ -197,12 +198,12 @@ class WalletRepositoryAdapterTest {
             assertThat(result.balance()).isEqualTo(70000);
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository).save(walletCaptor.capture());
-            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(70000);
+            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(Money.of(70000));
 
             ArgumentCaptor<WalletTransactionEntity> txCaptor = ArgumentCaptor.forClass(WalletTransactionEntity.class);
             verify(walletTransactionJpaRepository).save(txCaptor.capture());
             WalletTransactionEntity savedTx = txCaptor.getValue();
-            assertThat(savedTx.getAmount()).isEqualTo(debitAmount);
+            assertThat(savedTx.getAmount()).isEqualTo(Money.of(debitAmount));
             assertThat(savedTx.getType()).isEqualTo("DEBIT");
             assertThat(savedTx.getPayrollId()).isEqualTo(payrollId);
             assertThat(savedTx.getUserId()).isEqualTo(userId);
@@ -226,7 +227,7 @@ class WalletRepositoryAdapterTest {
             int debitAmount = 30000;
             WalletEntity newWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(0)
+                    .balance(Money.ZERO)
                     .updatedAt(LocalDateTime.now())
                     .build();
 
@@ -239,7 +240,7 @@ class WalletRepositoryAdapterTest {
 
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository, times(1)).save(walletCaptor.capture());
-            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(0);
+            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(Money.ZERO);
         }
 
         @Test
@@ -265,14 +266,14 @@ class WalletRepositoryAdapterTest {
             WalletTransactionEntity tx1 = WalletTransactionEntity.builder()
                     .transactionId(UUID.randomUUID())
                     .userId(userId)
-                    .amount(10000)
+                    .amount(Money.of(10000))
                     .type("CREDIT")
                     .createdAt(LocalDateTime.now().minusHours(2))
                     .build();
             WalletTransactionEntity tx2 = WalletTransactionEntity.builder()
                     .transactionId(UUID.randomUUID())
                     .userId(userId)
-                    .amount(20000)
+                    .amount(Money.of(20000))
                     .type("DEBIT")
                     .createdAt(LocalDateTime.now().minusHours(1))
                     .build();
@@ -317,7 +318,7 @@ class WalletRepositoryAdapterTest {
             String reference = "TOPUP:admin-123";
             WalletEntity updatedWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(150000)
+                    .balance(Money.of(150000))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, 150000, LocalDateTime.now());
@@ -334,7 +335,7 @@ class WalletRepositoryAdapterTest {
             verify(walletTransactionJpaRepository).save(txCaptor.capture());
             WalletTransactionEntity savedTx = txCaptor.getValue();
             assertThat(savedTx.getReference()).isEqualTo(reference);
-            assertThat(savedTx.getAmount()).isEqualTo(amount);
+            assertThat(savedTx.getAmount()).isEqualTo(Money.of(amount));
             assertThat(savedTx.getType()).isEqualTo("CREDIT");
             assertThat(savedTx.getPayrollId()).isNull();
         }
@@ -375,7 +376,7 @@ class WalletRepositoryAdapterTest {
             int amount = 50000;
             WalletEntity updatedWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(150000)
+                    .balance(Money.of(150000))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, 150000, LocalDateTime.now());
@@ -399,7 +400,7 @@ class WalletRepositoryAdapterTest {
             String reference = "TOPUP:admin-456";
             WalletEntity newWallet = WalletEntity.builder()
                     .userId(userId)
-                    .balance(amount)
+                    .balance(Money.of(amount))
                     .updatedAt(LocalDateTime.now())
                     .build();
             WalletBalanceDTO expectedDto = new WalletBalanceDTO(userId, amount, LocalDateTime.now());
@@ -414,13 +415,13 @@ class WalletRepositoryAdapterTest {
             assertThat(result.balance()).isEqualTo(amount);
             ArgumentCaptor<WalletEntity> walletCaptor = ArgumentCaptor.forClass(WalletEntity.class);
             verify(walletJpaRepository, atLeast(1)).save(walletCaptor.capture());
-            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(amount);
+            assertThat(walletCaptor.getValue().getBalance()).isEqualTo(Money.of(amount));
 
             ArgumentCaptor<WalletTransactionEntity> txCaptor = ArgumentCaptor.forClass(WalletTransactionEntity.class);
             verify(walletTransactionJpaRepository).save(txCaptor.capture());
             WalletTransactionEntity savedTx = txCaptor.getValue();
             assertThat(savedTx.getReference()).isEqualTo(reference);
-            assertThat(savedTx.getAmount()).isEqualTo(amount);
+            assertThat(savedTx.getAmount()).isEqualTo(Money.of(amount));
             assertThat(savedTx.getType()).isEqualTo("CREDIT");
             assertThat(savedTx.getPayrollId()).isNull();
         }

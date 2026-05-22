@@ -1,11 +1,13 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +31,13 @@ public class WalletEntity {
 	private UUID userId;
 
 	@Column(name = "balance", nullable = false)
-	private int balance;
+	@Builder.Default
+	private Money balance = Money.ZERO;
+
+	@Version
+	@Column(name = "version", nullable = false)
+	@Builder.Default
+	private Long version = 0L;
 
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;

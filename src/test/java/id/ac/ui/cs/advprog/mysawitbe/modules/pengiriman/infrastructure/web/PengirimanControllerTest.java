@@ -419,14 +419,17 @@ class PengirimanControllerTest {
     @Test
     void listApprovedDeliveriesForAdmin_returns200WithFilteredData() throws Exception {
         LocalDate date = LocalDate.of(2026, 4, 1);
-        when(queryUseCase.listApprovedDeliveriesForAdmin("Awan", date)).thenReturn(List.of(sample));
+        id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO pageResult =
+                new id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO(
+                        List.of(sample), 0, 10, 1, 1, false, false);
+        when(queryUseCase.listApprovedDeliveriesForAdmin("Awan", date, 0, 10)).thenReturn(pageResult);
 
         mockMvc.perform(get("/api/pengiriman/admin/approved")
                         .param("mandorName", "Awan")
                         .param("date", "2026-04-01"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].pengirimanId").value(sample.pengirimanId().toString()));
+                .andExpect(jsonPath("$.data.items[0].pengirimanId").value(sample.pengirimanId().toString()));
 
-        verify(queryUseCase).listApprovedDeliveriesForAdmin("Awan", date);
+        verify(queryUseCase).listApprovedDeliveriesForAdmin("Awan", date, 0, 10);
     }
 }

@@ -11,9 +11,12 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.Pengir
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +40,36 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
     private final PengirimanRepositoryPort repository;
     private final KebunQueryUseCase kebunQueryUseCase;
     private final PanenQueryUseCase panenQueryUseCase;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
+
+    private Counter statusAssignedCounter;
+    private Counter statusInTransitCounter;
+    private Counter statusTibaCounter;
+    private Counter statusApprovedMandorCounter;
+    private Counter statusRejectedMandorCounter;
+    private Counter statusApprovedAdminCounter;
+    private Counter statusPartialCounter;
+    private Counter statusRejectedAdminCounter;
+
+    @PostConstruct
+    void initMetrics() {
+        statusAssignedCounter     = deliveryCounter("ASSIGNED");
+        statusInTransitCounter    = deliveryCounter("IN_TRANSIT");
+        statusTibaCounter         = deliveryCounter("TIBA");
+        statusApprovedMandorCounter = deliveryCounter("APPROVED_MANDOR");
+        statusRejectedMandorCounter = deliveryCounter("REJECTED_MANDOR");
+        statusApprovedAdminCounter  = deliveryCounter("APPROVED_ADMIN");
+        statusPartialCounter        = deliveryCounter("PARTIAL");
+        statusRejectedAdminCounter  = deliveryCounter("REJECTED_ADMIN");
+    }
+
+    private Counter deliveryCounter(String status) {
+        return Counter.builder("pengiriman.status.transitions.total")
+                .description("Jumlah transisi status pengiriman per jenis (visualisasi bottleneck logistik)")
+                .tag("status", status)
+                .register(meterRegistry);
+    }
 
     @Override
     public PengirimanDTO assignSupirForDelivery(UUID mandorId, UUID supirId, List<UUID> panenIds) {
@@ -82,7 +114,7 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             throw new IllegalArgumentException("Total berat pengiriman tidak boleh melebihi 400 kg.");
         }
 
-        return repository.save(new PengirimanDTO(
+        PengirimanDTO saved = repository.save(new PengirimanDTO(
                 null,
                 supirId,
                 null,
@@ -95,6 +127,8 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
                 normalizedPanenIds,
                 LocalDateTime.now()
         ));
+        statusAssignedCounter.increment();
+        return saved;
     }
 
     @Override
@@ -123,8 +157,11 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(null);
         });
 
-        if (newStatus == PengirimanStatus.TIBA) {
-            eventPublisher.publishEvent(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
+        if (newStatus == PengirimanStatus.IN_TRANSIT) {
+            statusInTransitCounter.increment();
+        } else if (newStatus == PengirimanStatus.TIBA) {
+            statusTibaCounter.increment();
+            eventPublisher.publish(new PengirimanStatusTibaEvent(saved.pengirimanId(), saved.mandorId()));
         }
         return saved;
     }
@@ -141,7 +178,8 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(null);
         });
 
-        eventPublisher.publishEvent(new PengirimanApprovedByMandorEvent(
+        statusApprovedMandorCounter.increment();
+        eventPublisher.publish(new PengirimanApprovedByMandorEvent(
                 saved.pengirimanId(),
                 saved.supirId(),
                 saved.totalWeight()
@@ -156,11 +194,13 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
         ensureMandorOwnership(current, mandorId);
         ensureStatus(current, PengirimanStatus.TIBA, "Mandor hanya bisa menolak pengiriman yang sudah TIBA.");
 
-        return saveUpdated(current, builder -> {
+        PengirimanDTO saved = saveUpdated(current, builder -> {
             builder.status(PengirimanStatus.REJECTED_MANDOR.name());
             builder.acceptedWeight(0);
             builder.statusReason(normalizedReason);
         });
+        statusRejectedMandorCounter.increment();
+        return saved;
     }
 
     @Override
@@ -223,7 +263,13 @@ public class PengirimanCommandUseCaseImpl implements PengirimanCommandUseCase {
             builder.statusReason(normalizedReason);
         });
 
-        eventPublisher.publishEvent(new PengirimanProcessedByAdminEvent(
+        switch (status) {
+            case APPROVED_ADMIN -> statusApprovedAdminCounter.increment();
+            case PARTIAL        -> statusPartialCounter.increment();
+            case REJECTED_ADMIN -> statusRejectedAdminCounter.increment();
+            default -> { /* no-op */ }
+        }
+        eventPublisher.publish(new PengirimanProcessedByAdminEvent(
                 saved.pengirimanId(),
                 saved.mandorId(),
                 saved.acceptedWeight(),

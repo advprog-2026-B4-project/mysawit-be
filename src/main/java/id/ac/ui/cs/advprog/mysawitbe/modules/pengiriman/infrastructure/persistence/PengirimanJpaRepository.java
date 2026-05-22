@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,6 +46,15 @@ public interface PengirimanJpaRepository extends JpaRepository<PengirimanJpaEnti
             String status,
             LocalDateTime startTimestamp,
             LocalDateTime endTimestamp
+    );
+
+    Page<PengirimanJpaEntity> findByStatusOrderByTimestampDesc(String status, Pageable pageable);
+
+    Page<PengirimanJpaEntity> findByStatusAndTimestampBetweenOrderByTimestampDesc(
+            String status,
+            LocalDateTime startTimestamp,
+            LocalDateTime endTimestamp,
+            Pageable pageable
     );
 
     @Query("""

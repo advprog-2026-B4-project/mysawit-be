@@ -1,6 +1,7 @@
-package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
+package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.service;
 
-import id.ac.ui.cs.advprog.mysawitbe.common.infrastructure.external.MidtransProperties;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO.PhotoDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprovedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
@@ -23,17 +24,28 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.Pengir
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,8 +74,31 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	private final PanenQueryUseCase panenQueryUseCase;
 	private final UserQueryUseCase userQueryUseCase;
 	private final ObjectProvider<PaymentGatewayPort> paymentGatewayProvider;
-	private final MidtransProperties midtransProperties;
-	private final ApplicationEventPublisher eventPublisher;
+	private final DomainEventPublisher eventPublisher;
+	private final MeterRegistry meterRegistry;
+
+	private Counter payrollApprovedCounter;
+	private Counter payrollRejectedCounter;
+
+	@PostConstruct
+	void initMetrics() {
+		Gauge.builder("payroll.pending.count", payrollRepository, PayrollRepositoryPort::countPendingPayrolls)
+				.description("Jumlah payroll berstatus PENDING — alert bila menumpuk")
+				.register(meterRegistry);
+
+		Gauge.builder("wallet.balance.total.rupiah", walletRepository, WalletRepositoryPort::sumAllWorkerBalances)
+				.description("Total saldo seluruh wallet pekerja (Rupiah) — monitoring kewajiban finansial")
+				.baseUnit("rupiah")
+				.register(meterRegistry);
+
+		payrollApprovedCounter = Counter.builder("payroll.approved.total")
+				.description("Jumlah payroll disetujui admin (cumulative)")
+				.register(meterRegistry);
+
+		payrollRejectedCounter = Counter.builder("payroll.rejected.total")
+				.description("Jumlah payroll ditolak admin (cumulative)")
+				.register(meterRegistry);
+	}
 
 	@Override
 	public PayrollStatusDTO getPayrollStatus(UUID payrollId) {
@@ -89,8 +124,33 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	private PayrollPageDTO enrichPayrollPageWithPanenEvidence(PayrollPageDTO page) {
+		// Collect all panen IDs from this page in one batch — eliminates N+1
+		Set<UUID> panenIds = page.items().stream()
+				.filter(p -> REFERENCE_PANEN.equalsIgnoreCase(p.referenceType()))
+				.map(PayrollDTO::referenceId)
+				.filter(id -> id != null)
+				.collect(Collectors.toSet());
+
+		Map<UUID, PanenDTO> panenById = panenIds.isEmpty()
+				? Map.of()
+				: panenQueryUseCase.getPanenByIds(panenIds);
+
 		List<PayrollDTO> enrichedItems = page.items().stream()
-				.map(this::enrichPayrollWithPanenEvidence)
+				.map(payroll -> {
+					if (!REFERENCE_PANEN.equalsIgnoreCase(payroll.referenceType())) {
+						return copyPayrollWithEvidenceUrls(payroll, List.of());
+					}
+					var panen = panenById.get(payroll.referenceId());
+					if (panen == null || panen.photos() == null) {
+						return copyPayrollWithEvidenceUrls(payroll, List.of());
+					}
+					List<String> urls = panen.photos().stream()
+							.map(PhotoDTO::url)
+							.filter(url -> url != null && !url.isBlank())
+							.distinct()
+							.toList();
+					return copyPayrollWithEvidenceUrls(payroll, urls);
+				})
 				.toList();
 
 		return new PayrollPageDTO(
@@ -102,29 +162,6 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				page.hasNext(),
 				page.hasPrevious()
 		);
-	}
-
-	private PayrollDTO enrichPayrollWithPanenEvidence(PayrollDTO payroll) {
-		if (!REFERENCE_PANEN.equalsIgnoreCase(payroll.referenceType())) {
-			return copyPayrollWithEvidenceUrls(payroll, List.of());
-		}
-
-		try {
-			var panen = panenQueryUseCase.getPanenById(payroll.referenceId());
-			if (panen == null || panen.photos() == null) {
-				return copyPayrollWithEvidenceUrls(payroll, List.of());
-			}
-
-			List<String> urls = panen.photos().stream()
-					.map(photo -> photo.url())
-					.filter(url -> url != null && !url.isBlank())
-					.distinct()
-					.toList();
-
-			return copyPayrollWithEvidenceUrls(payroll, urls);
-		} catch (RuntimeException ex) {
-			return copyPayrollWithEvidenceUrls(payroll, List.of());
-		}
 	}
 
 	private PayrollDTO copyPayrollWithEvidenceUrls(PayrollDTO payroll, List<String> evidenceUrls) {
@@ -146,8 +183,9 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
-	@Transactional
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPanenApproved(PanenApprovedEvent event) {
 		if (event == null || event.weight() <= 0) {
 			return;
@@ -175,8 +213,9 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
-	@Transactional
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event) {
 		if (event == null || event.totalWeight() <= 0) {
 			return;
@@ -191,8 +230,9 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
-	@EventListener
-	@Transactional
+	@Async("eventTaskExecutor")
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event) {
 		if (event == null || event.acceptedWeight() <= 0) {
 			return;
@@ -214,6 +254,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 	@Override
 	@Transactional
+	@CacheEvict(value = {"wallet-balance", "wallet-tx"}, allEntries = true)
 	public PayrollDTO approvePayroll(UUID payrollId, UUID adminId) {
 		requireAdminId(adminId);
 		PayrollDTO current = requirePayroll(payrollId);
@@ -237,7 +278,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 
 		PayrollDTO saved = payrollRepository.save(approved);
 		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		payrollApprovedCounter.increment();
 		return saved;
 	}
 
@@ -268,7 +310,8 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		);
 
 		PayrollDTO saved = payrollRepository.save(rejected);
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_REJECTED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_REJECTED));
+		payrollRejectedCounter.increment();
 		return saved;
 	}
 
@@ -297,9 +340,10 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 				String[] parts = orderId.split(":", 3);
 				if (parts.length == 3) {
 					UUID adminId = UUID.fromString(parts[1]);
-					int amountRupiah = (int) Double.parseDouble(verifiedPayload.grossAmount());
-					int internalCents = amountRupiah / 100;
-					walletRepository.creditTopUp(adminId, internalCents, verifiedPayload.orderId());
+					long amountRupiah = new java.math.BigDecimal(verifiedPayload.grossAmount())
+							.setScale(0, java.math.RoundingMode.UNNECESSARY)
+							.longValueExact();
+					walletRepository.creditTopUp(adminId, amountRupiah, verifiedPayload.orderId());
 				}
 			}
 		}
@@ -336,11 +380,13 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	@Override
+	@Cacheable(value = "wallet-balance", key = "#userId")
 	public WalletBalanceDTO getUserWalletBalance(UUID userId) {
 		return walletRepository.findBalanceByUserId(userId);
 	}
 
 	@Override
+	@Cacheable(value = "wallet-tx", key = "#userId")
 	public List<WalletTransactionDTO> getWalletTransactions(UUID userId) {
 		return walletRepository.findTransactionsByUserId(userId);
 	}
@@ -393,7 +439,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 		);
 		PayrollDTO saved = payrollRepository.save(approved);
 		walletRepository.credit(saved.userId(), saved.netAmount(), saved.payrollId());
-		eventPublisher.publishEvent(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
+		eventPublisher.publish(new PayrollProcessedEvent(saved.payrollId(), saved.userId(), STATUS_APPROVED));
 	}
 
 	private PayrollDTO requirePayroll(UUID payrollId) {
@@ -435,12 +481,7 @@ public class PembayaranService implements PembayaranQueryUseCase, PembayaranComm
 	}
 
 	private int computeWageFromGrams(int weight, int wageRate) {
-		// weight and wage rate use the same smallest-unit scale, so multiply directly.
-		return multiplySafe(weight, wageRate);
-	}
-
-	private int multiplySafe(int left, int right) {
-		long result = (long) left * right;
+		long result = (long) weight * wageRate;
 		if (result > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Payroll amount exceeds maximum supported value");
 		}

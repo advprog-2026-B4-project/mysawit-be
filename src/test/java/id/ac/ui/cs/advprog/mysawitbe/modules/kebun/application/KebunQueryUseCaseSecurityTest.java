@@ -4,10 +4,12 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.in.KebunQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.out.KebunRepositoryPort;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,17 +52,23 @@ class KebunQueryUseCaseSecurityTest {
         }
 
         @Bean
-        ApplicationEventPublisher applicationEventPublisher() {
-            return mock(ApplicationEventPublisher.class);
+        DomainEventPublisher applicationEventPublisher() {
+            return mock(DomainEventPublisher.class);
+        }
+
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
         }
 
         @Bean
         KebunUseCaseService kebunUseCaseService(
                 KebunRepositoryPort kebunRepositoryPort,
                 UserQueryUseCase userQueryUseCase,
-                ApplicationEventPublisher applicationEventPublisher
+                DomainEventPublisher applicationEventPublisher,
+                MeterRegistry meterRegistry
         ) {
-            return new KebunUseCaseService(kebunRepositoryPort, userQueryUseCase, applicationEventPublisher);
+            return new KebunUseCaseService(kebunRepositoryPort, userQueryUseCase, applicationEventPublisher, meterRegistry);
         }
     }
 

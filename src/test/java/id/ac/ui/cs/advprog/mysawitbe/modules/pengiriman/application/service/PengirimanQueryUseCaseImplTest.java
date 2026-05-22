@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Assignme
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenQueryUseCase;
@@ -233,7 +234,8 @@ class PengirimanQueryUseCaseImplTest {
                 LocalDateTime.now()
         );
 
-        when(repository.findApprovedByMandorForAdmin("awan", null)).thenReturn(List.of(deliveryA, deliveryB));
+        when(repository.findApprovedByMandorForAdminPaginated(null, 0, 10))
+                .thenReturn(new PengirimanPageDTO(List.of(deliveryA, deliveryB), 0, 10, 2, 1, false, false));
         when(userQueryUseCase.getUserById(deliveryA.supirId()))
                 .thenReturn(new UserDTO(deliveryA.supirId(), "supir-a", "Supir A", "SUPIR", "supir-a@example.com"));
         when(userQueryUseCase.getUserById(deliveryB.supirId()))
@@ -243,9 +245,9 @@ class PengirimanQueryUseCaseImplTest {
         when(userQueryUseCase.getUserById(mandorB))
                 .thenReturn(new UserDTO(mandorB, "budi", "Budi Mandor", "MANDOR", "budi@example.com"));
 
-        List<PengirimanDTO> result = service.listApprovedDeliveriesForAdmin("awan", null);
+        PengirimanPageDTO result = service.listApprovedDeliveriesForAdmin("awan", null, 0, 10);
 
-        assertThat(result)
+        assertThat(result.items())
                 .hasSize(1)
                 .first()
                 .satisfies(dto -> assertThat(dto.mandorName()).isEqualTo("Awan Mandor"));
@@ -490,37 +492,45 @@ class PengirimanQueryUseCaseImplTest {
                 List.of(),
                 LocalDateTime.now()
         );
-        when(repository.findApprovedByMandorForAdmin(" ", LocalDate.of(2026, 4, 1))).thenReturn(List.of(dto));
+        when(repository.findApprovedByMandorForAdminPaginated(LocalDate.of(2026, 4, 1), 0, 10))
+                .thenReturn(new PengirimanPageDTO(List.of(dto), 0, 10, 1, 1, false, false));
 
-        List<PengirimanDTO> result = service.listApprovedDeliveriesForAdmin(" ", LocalDate.of(2026, 4, 1));
+        PengirimanPageDTO result = service.listApprovedDeliveriesForAdmin(" ", LocalDate.of(2026, 4, 1), 0, 10);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().mandorName()).isNull();
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().getFirst().mandorName()).isNull();
     }
 
     @Test
     void listApprovedDeliveriesForAdmin_nullFilter_keepsAll() {
         PengirimanDTO dto = delivery(UUID.randomUUID(), null, null, null, null);
-        when(repository.findApprovedByMandorForAdmin(null, null)).thenReturn(List.of(dto));
+        when(repository.findApprovedByMandorForAdminPaginated(null, 0, 10))
+                .thenReturn(new PengirimanPageDTO(List.of(dto), 0, 10, 1, 1, false, false));
 
-        assertThat(service.listApprovedDeliveriesForAdmin(null, null)).hasSize(1);
+        assertThat(service.listApprovedDeliveriesForAdmin(null, null, 0, 10).items()).hasSize(1);
     }
 
     @Test
     void listApprovedDeliveriesForAdmin_nonMatchingNullMandorName_returnsEmptyList() {
         PengirimanDTO dto = delivery(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Supir", null);
-        when(repository.findApprovedByMandorForAdmin("awan", null)).thenReturn(List.of(dto));
+        when(repository.findApprovedByMandorForAdminPaginated(null, 0, 10))
+                .thenReturn(new PengirimanPageDTO(List.of(dto), 0, 10, 1, 1, false, false));
 
-        assertThat(service.listApprovedDeliveriesForAdmin("awan", null)).isEmpty();
+        assertThat(service.listApprovedDeliveriesForAdmin("awan", null, 0, 10).items()).isEmpty();
     }
 
     @Test
     void listApprovedDeliveriesForAdmin_blankExistingNameAndBlankFallback_areHandled() {
         UUID mandorId = UUID.randomUUID();
         PengirimanDTO dto = delivery(UUID.randomUUID(), UUID.randomUUID(), mandorId, " ", " ");
-        when(repository.findApprovedByMandorForAdmin("awan", null)).thenReturn(List.of(dto));
+        when(repository.findApprovedByMandorForAdminPaginated(null, 0, 10))
+                .thenReturn(new PengirimanPageDTO(List.of(dto), 0, 10, 1, 1, false, false));
+        when(userQueryUseCase.getUserById(dto.supirId()))
+                .thenReturn(new UserDTO(dto.supirId(), "supir", "Supir", "SUPIR", "s@example.com"));
+        when(userQueryUseCase.getUserById(mandorId))
+                .thenThrow(new RuntimeException("not found"));
 
-        assertThat(service.listApprovedDeliveriesForAdmin("awan", null)).isEmpty();
+        assertThat(service.listApprovedDeliveriesForAdmin("awan", null, 0, 10).items()).isEmpty();
     }
 
     private PengirimanDTO delivery(UUID pengirimanId, UUID supirId, UUID mandorId, String supirName, String mandorName) {

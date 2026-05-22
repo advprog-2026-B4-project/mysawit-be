@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.mapper;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletBalanceDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTransactionDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.WalletEntity;
@@ -18,4 +19,11 @@ public interface WalletMapper {
     WalletTransactionDTO toTransactionDto(WalletTransactionEntity entity);
 
     List<WalletTransactionDTO> toTransactionDtoList(List<WalletTransactionEntity> entities);
+
+    /**
+     * MapStruct conversion method: Money → long (for DTO fields that remain primitive long).
+     */
+    default long map(Money value) {
+        return value == null ? 0L : value.amountSmallestUnit();
+    }
 }

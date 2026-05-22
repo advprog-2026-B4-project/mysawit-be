@@ -21,7 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.dto.UserDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryUseCase;
@@ -31,6 +31,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprov
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenRejectedEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenMapperPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -40,7 +41,7 @@ class PanenCommandImplTest {
 
     @Mock private PanenRepositoryPort repositoryPort;
     @Mock private PanenMapperPort mapper;
-    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DomainEventPublisher eventPublisher;
     @Mock private UserQueryUseCase userQueryUseCase;
     @Mock private KebunQueryUseCase kebunQueryUseCase;
 
@@ -205,7 +206,7 @@ class PanenCommandImplTest {
             assertThrows(EntityNotFoundException.class,
                     () -> panenCommandImpl.approvePanen(panenId, mandorId));
 
-            verify(eventPublisher, never()).publishEvent(any());
+            verify(eventPublisher, never()).publish(any());
         }
 
         @Test
@@ -240,7 +241,7 @@ class PanenCommandImplTest {
 
             ArgumentCaptor<PanenApprovedEvent> eventCaptor =
                     ArgumentCaptor.forClass(PanenApprovedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            verify(eventPublisher).publish(eventCaptor.capture());
 
             PanenApprovedEvent event = eventCaptor.getValue();
             assertEquals(panenId, event.panenId());
@@ -272,7 +273,7 @@ class PanenCommandImplTest {
             assertThrows(EntityNotFoundException.class,
                     () -> panenCommandImpl.rejectPanen(panenId, mandorId, "alasan"));
 
-            verify(eventPublisher, never()).publishEvent(any());
+            verify(eventPublisher, never()).publish(any());
         }
 
         @Test
@@ -310,7 +311,7 @@ class PanenCommandImplTest {
 
             ArgumentCaptor<PanenRejectedEvent> eventCaptor =
                     ArgumentCaptor.forClass(PanenRejectedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            verify(eventPublisher).publish(eventCaptor.capture());
 
             PanenRejectedEvent event = eventCaptor.getValue();
             assertEquals(panenId, event.panenId());
@@ -332,6 +333,6 @@ class PanenCommandImplTest {
     private Panen buildDomainPanen(UUID panenId, UUID buruhId, UUID kebunId,
                                    PanenStatus status, String rejectionReason) {
         return new Panen(panenId, buruhId, "Budi", kebunId,
-                "desc", 100, status, rejectionReason, LocalDateTime.now(), List.of());
+                "desc", Weight.of(100), status, rejectionReason, LocalDateTime.now(), List.of());
     }
 }

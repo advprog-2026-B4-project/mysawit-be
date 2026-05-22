@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +17,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenReject
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.in.PanenCommandUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenMapperPort;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.port.out.PanenRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
     private final PanenRepositoryPort repositoryPort;
     private final PanenMapperPort mapper;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
     private final UserQueryUseCase userQueryUseCase;
     private final KebunQueryUseCase kebunQueryUseCase;
 
@@ -54,11 +55,11 @@ public class PanenCommandImpl implements PanenCommandUseCase {
         String buruhName = buruh.name();
 
         Panen domainPanen = Panen.catatBaru(
-                buruhId, 
-                buruhName, 
-                kebunId, 
+                buruhId,
+                buruhName,
+                kebunId,
                 description,
-                weight,
+                Weight.of(weight),
                 now,
                 photoUrls
         );
@@ -79,7 +80,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
 
         PanenDTO updatedDto = repositoryPort.save(mapper.toDTO(domainPanen));
 
-        eventPublisher.publishEvent(new PanenApprovedEvent(
+        eventPublisher.publish(new PanenApprovedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),
                 mandorId,
@@ -104,7 +105,7 @@ public class PanenCommandImpl implements PanenCommandUseCase {
         domainPanen.reject(rejectionReason);
         PanenDTO updatedDto = repositoryPort.save(mapper.toDTO(domainPanen));
 
-        eventPublisher.publishEvent(new PanenRejectedEvent(
+        eventPublisher.publish(new PanenRejectedEvent(
                 updatedDto.panenId(),
                 updatedDto.buruhId(),
                 rejectionReason

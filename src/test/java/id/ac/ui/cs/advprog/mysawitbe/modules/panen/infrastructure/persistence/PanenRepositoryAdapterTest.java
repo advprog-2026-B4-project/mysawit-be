@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.panen.infrastructure.persistence;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.dto.PanenDTO;
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.Panen;
 import id.ac.ui.cs.advprog.mysawitbe.modules.panen.domain.PanenStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,15 +48,15 @@ class PanenRepositoryAdapterTest {
         sampleDto = new PanenDTO(panenId, buruhId, "Budi", kebunId, "Test", 100, "PENDING", null, List.of(), LocalDateTime.now());
         
         sampleDomain = new Panen(
-                panenId, 
-                buruhId, 
-                "Budi", 
-                kebunId, 
-                "Test", 
-                100, 
-                PanenStatus.PENDING, 
-                null, 
-                LocalDateTime.now(), 
+                panenId,
+                buruhId,
+                "Budi",
+                kebunId,
+                "Test",
+                Weight.of(100),
+                PanenStatus.PENDING,
+                null,
+                LocalDateTime.now(),
                 List.of()
         );
         

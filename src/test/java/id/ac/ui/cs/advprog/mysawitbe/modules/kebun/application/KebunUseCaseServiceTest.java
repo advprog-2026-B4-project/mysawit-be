@@ -5,14 +5,15 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.application.port.in.UserQueryU
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.CoordinateDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.dto.KebunDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.port.out.KebunRepositoryPort;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,14 +30,18 @@ class KebunUseCaseServiceTest {
 
     @Mock private KebunRepositoryPort kebunRepository;
     @Mock private UserQueryUseCase userQueryUseCase;
-    @Mock private ApplicationEventPublisher eventPublisher;
-    @InjectMocks private KebunUseCaseService service;
+    @Mock private DomainEventPublisher eventPublisher;
+
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private KebunUseCaseService service;
 
     private List<CoordinateDTO> coordinates;
     private UUID kebunId;
 
     @BeforeEach
     void setUp() {
+        service = new KebunUseCaseService(kebunRepository, userQueryUseCase, eventPublisher, meterRegistry);
+        service.initMetrics();
         coordinates = List.of(
                 new CoordinateDTO(0, 0),
                 new CoordinateDTO(0, 10),
@@ -599,7 +604,7 @@ class KebunUseCaseServiceTest {
 
         service.assignMandorToKebun(mandorId, kebunId);
 
-        verify(eventPublisher).publishEvent(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
+        verify(eventPublisher).publish(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
     }
 
     @Test
@@ -612,7 +617,7 @@ class KebunUseCaseServiceTest {
 
         service.moveMandorToKebun(mandorId, kebunId);
 
-        verify(eventPublisher).publishEvent(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
+        verify(eventPublisher).publish(any(id.ac.ui.cs.advprog.mysawitbe.modules.kebun.application.event.MandorAssignedToKebunEvent.class));
     }
 
     @Test

@@ -7,7 +7,6 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.panen.application.event.PanenApprov
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanApprovedByMandorEvent;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.event.PengirimanProcessedByAdminEvent;
 
-import org.springframework.context.event.EventListener;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.UUID;
@@ -24,21 +23,18 @@ public interface PembayaranCommandUseCase {
      * Triggered when a panen is approved; creates a pending payroll for the buruh.
      * Internal event - no HTTP principal, do not add @PreAuthorize.
      */
-    @EventListener
     void onPanenApproved(PanenApprovedEvent event);
 
     /**
      * Triggered when a mandor approves a pengiriman; creates a pending payroll for the assigned supir.
      * Internal event - no HTTP principal, do not add @PreAuthorize.
      */
-    @EventListener
     void onPengirimanApprovedByMandor(PengirimanApprovedByMandorEvent event);
 
     /**
      * Triggered when admin processes a pengiriman; creates pending payroll for mandor (and supir if applicable).
      * Internal event - no HTTP principal, do not add @PreAuthorize.
      */
-    @EventListener
     void onPengirimanProcessedByAdmin(PengirimanProcessedByAdminEvent event);
 
     /**

@@ -37,4 +37,6 @@ public interface PayrollRepositoryPort {
     int getWageRate(String role);
 
     void updateWageRate(String role, int newRatePerGram);
+
+    long countPendingPayrolls();
 }

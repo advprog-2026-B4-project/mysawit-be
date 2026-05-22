@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.service;
+package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.service;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.VariabelPokokDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.in.VariabelPokokCommandUseCase;

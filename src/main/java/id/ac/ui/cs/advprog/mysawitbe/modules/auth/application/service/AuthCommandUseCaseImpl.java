@@ -9,7 +9,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.auth.domain.UserRole;
 import id.ac.ui.cs.advprog.mysawitbe.modules.auth.infrastructure.external.JwtService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +31,7 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
     private final OAuth2Port          oauth2Port;
     private final JwtService          jwtService;
     private final PasswordEncoder     passwordEncoder;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
 
     private final String googleClientId;
 
@@ -39,7 +39,7 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
                                   OAuth2Port oauth2Port,
                                   JwtService jwtService,
                                   PasswordEncoder passwordEncoder,
-                                  ApplicationEventPublisher eventPublisher,
+                                  DomainEventPublisher eventPublisher,
                                   @Value("${GOOGLE_CLIENT_ID:placeholder-client-id}") String googleClientId,
                                   @Value("${app.google.redirect-uri}") String googleRedirectUri) {
         this.userRepository   = userRepository;
@@ -226,7 +226,7 @@ public class AuthCommandUseCaseImpl implements AuthCommandUseCase {
             throw new IllegalArgumentException("Target user is not a MANDOR");
         }
         userRepository.saveBuruhMandorAssignment(buruhId, mandorId);
-        eventPublisher.publishEvent(new BuruhAssignedEvent(buruhId, mandorId));
+        eventPublisher.publish(new BuruhAssignedEvent(buruhId, mandorId));
     }
 
     @Override

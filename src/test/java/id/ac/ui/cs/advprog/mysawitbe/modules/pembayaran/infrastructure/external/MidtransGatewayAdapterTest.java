@@ -21,6 +21,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class MidtransGatewayAdapterTest {
@@ -427,6 +428,8 @@ class MidtransGatewayAdapterTest {
     void init_shouldCreateRestClient() {
         when(props.snapBaseUrl()).thenReturn(TEST_SNAP_URL);
         when(props.serverKey()).thenReturn(TEST_SERVER_KEY);
+        when(props.connectTimeoutMs()).thenReturn(5000L);
+        when(props.readTimeoutMs()).thenReturn(10000L);
 
         MidtransGatewayAdapter adapterToInit = new MidtransGatewayAdapter(props);
         adapterToInit.init();

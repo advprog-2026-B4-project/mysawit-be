@@ -17,13 +17,13 @@ public interface WalletRepositoryPort {
     /**
      * Credit the wallet by amount. Returns the updated balance.
      */
-    WalletBalanceDTO credit(UUID userId, int amount, UUID payrollId);
+    WalletBalanceDTO credit(UUID userId, long amount, UUID payrollId);
 
     /**
      * Debit the wallet by amount. Returns the updated balance.
      * Throws IllegalStateException if balance is insufficient.
      */
-    WalletBalanceDTO debit(UUID userId, int amount, UUID payrollId);
+    WalletBalanceDTO debit(UUID userId, long amount, UUID payrollId);
 
     List<WalletTransactionDTO> findTransactionsByUserId(UUID userId);
 
@@ -31,5 +31,7 @@ public interface WalletRepositoryPort {
      * Credit the wallet for a top-up (via Midtrans callback).
      * Uses reference string (Midtrans orderId) instead of payrollId.
      */
-    WalletBalanceDTO creditTopUp(UUID userId, int amount, String reference);
+    WalletBalanceDTO creditTopUp(UUID userId, long amount, String reference);
+
+    long sumAllWorkerBalances();
 }

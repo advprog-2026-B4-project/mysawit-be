@@ -3,6 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
+
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -33,6 +34,7 @@ dependencies {
     // Core Web & JPA
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("jakarta.validation:jakarta.validation-api")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -47,8 +49,19 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
-    // Redis
+    // Redis + Cache
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+
+    // Retry (optimistic locking retries on wallet operations)
+    implementation("org.springframework.retry:spring-retry:2.0.12")
+
+    // Structured JSON logging
+    implementation("net.logstash.logback:logstash-logback-encoder:8.0")
+
+    // Rate limiting (Redis-backed via bucket4j-redis + Lettuce)
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+    implementation("com.bucket4j:bucket4j-redis:8.10.1")
 
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.6.3")
@@ -61,6 +74,14 @@ dependencies {
 
     // WebFlux (reactive HTTP client for OAuth2 token exchange)
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    // Actuator + Metrics
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
+    // AOP (for PanenMetricsAspect)
+    implementation("org.springframework:spring-aop")
+    implementation("org.aspectj:aspectjweaver")
 
     // Dev
     developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -75,11 +96,13 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito:mockito-core")
     testImplementation("org.mockito:mockito-junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
@@ -92,6 +115,7 @@ tasks.withType<Test> {
 }
 
 tasks.test {
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     filter {
         excludeTestsMatching("*FunctionalTest")
     }
@@ -120,11 +144,11 @@ tasks.register<JavaExec>("changeAdminPassword") {
     environment("DB_PASSWORD", System.getenv("DB_PASSWORD") ?: "postgres")
 }
 
-tasks.register<JavaExec>("seedPayrollTestData") {
+tasks.register<JavaExec>("seedDummyData") {
     group       = "seed"
-    description = "Generate deterministic seed data for payroll and wallet feature testing."
+    description = "Seed comprehensive dummy data for all modules: kebun, panen, pengiriman, payroll, wallet, notifications."
     classpath   = sourceSets["main"].runtimeClasspath
-    mainClass   = "id.ac.ui.cs.advprog.mysawitbe.tools.SeedPayrollTestData"
+    mainClass   = "id.ac.ui.cs.advprog.mysawitbe.tools.SeedDummyData"
 
     environment("DB_URL",      System.getenv("DB_URL")      ?: "jdbc:postgresql://localhost:5432/mysawit")
     environment("DB_USERNAME", System.getenv("DB_USERNAME") ?: "postgres")

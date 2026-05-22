@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.Assigned
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignmentRecommendationDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.AssignablePanenDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.exception.KebunQueryDependencyUnavailableException;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.in.PengirimanQueryUseCase;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
@@ -151,11 +152,16 @@ public class PengirimanQueryUseCaseImpl implements PengirimanQueryUseCase {
     }
 
     @Override
-    public List<PengirimanDTO> listApprovedDeliveriesForAdmin(String mandorName, LocalDate date) {
-        return repository.findApprovedByMandorForAdmin(mandorName, date).stream()
+    public PengirimanPageDTO listApprovedDeliveriesForAdmin(String mandorName, LocalDate date, int page, int size) {
+        PengirimanPageDTO raw = repository.findApprovedByMandorForAdminPaginated(date, page, size);
+
+        List<PengirimanDTO> enriched = raw.items().stream()
                 .map(this::enrichUserNames)
                 .filter(pengiriman -> matchesMandorName(pengiriman.mandorName(), mandorName))
                 .toList();
+
+        return new PengirimanPageDTO(enriched, raw.page(), raw.size(),
+                raw.totalElements(), raw.totalPages(), raw.hasNext(), raw.hasPrevious());
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {

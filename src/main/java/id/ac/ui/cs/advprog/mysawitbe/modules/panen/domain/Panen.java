@@ -4,19 +4,21 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Weight;
+
 public class Panen {
     private final UUID panenId;
     private final UUID buruhId;
     private final String buruhName;
     private final UUID kebunId;
     private final String description;
-    private final Integer weight; 
+    private final Weight weight;
     private PanenStatus status;
     private String rejectionReason;
     private final LocalDateTime timestamp;
     private final List<PanenPhoto> photos;
 
-    public Panen(UUID panenId, UUID buruhId, String buruhName, UUID kebunId, String description, Integer weight, PanenStatus status, String rejectionReason, LocalDateTime timestamp, List<PanenPhoto> photos) {
+    public Panen(UUID panenId, UUID buruhId, String buruhName, UUID kebunId, String description, Weight weight, PanenStatus status, String rejectionReason, LocalDateTime timestamp, List<PanenPhoto> photos) {
         this.panenId = panenId;
         this.buruhId = buruhId;
         this.buruhName = buruhName;
@@ -29,15 +31,15 @@ public class Panen {
         this.photos = photos;
     }
 
-    public static Panen catatBaru(UUID buruhId, 
-        String buruhName, 
-        UUID kebunId, String description, Integer weight, 
+    public static Panen catatBaru(UUID buruhId,
+        String buruhName,
+        UUID kebunId, String description, Weight weight,
         LocalDateTime timestamp, List<String> photoUrls) {
-        
+
             List<PanenPhoto> domainPhotos = photoUrls.stream()
             .map(PanenPhoto::create)
             .toList();
-            
+
             return new Panen(UUID.randomUUID(), buruhId, buruhName, kebunId, description, weight, PanenStatus.PENDING, null, timestamp, domainPhotos);
     }
 
@@ -76,7 +78,7 @@ public class Panen {
         return kebunId;
     }
 
-    public Integer getWeight() {
+    public Weight getWeight() {
         return weight;
     }
 

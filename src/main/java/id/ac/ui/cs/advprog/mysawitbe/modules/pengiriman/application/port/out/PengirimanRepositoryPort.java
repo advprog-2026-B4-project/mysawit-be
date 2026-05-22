@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out;
 
 import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,4 +26,6 @@ public interface PengirimanRepositoryPort {
     List<PengirimanDTO> findByMandorIdAndSupirId(UUID mandorId, UUID supirId);
 
     List<PengirimanDTO> findApprovedByMandorForAdmin(String mandorName, LocalDate date);
+
+    PengirimanPageDTO findApprovedByMandorForAdminPaginated(LocalDate date, int page, int size);
 }

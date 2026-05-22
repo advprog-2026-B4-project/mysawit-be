@@ -15,7 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import id.ac.ui.cs.advprog.mysawitbe.common.port.DomainEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
@@ -42,7 +42,7 @@ class AuthCommandUseCaseImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private DomainEventPublisher eventPublisher;
 
     @Captor
     private ArgumentCaptor<BuruhAssignedEvent> eventCaptor;
@@ -487,7 +487,7 @@ class AuthCommandUseCaseImplTest {
         authCommandUseCase.assignBuruhToMandor(buruhId, mandorId);
 
         verify(userRepository, times(1)).saveBuruhMandorAssignment(buruhId, mandorId);
-        verify(eventPublisher, times(1)).publishEvent(any(BuruhAssignedEvent.class));
+        verify(eventPublisher, times(1)).publish(any(BuruhAssignedEvent.class));
     }
 
     @Test

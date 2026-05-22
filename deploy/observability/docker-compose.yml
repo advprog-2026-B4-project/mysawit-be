@@ -61,6 +61,31 @@ services:
       prometheus:
         condition: service_healthy
 
+  loki:
+    image: grafana/loki:3.3.0
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  alloy:
+    image: grafana/alloy:v1.5.0
+    restart: unless-stopped
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/mysawit:/var/log/mysawit:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+
   grafana:
     image: grafana/grafana:11.3.0
     restart: unless-stopped
@@ -78,9 +103,12 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
+      loki:
+        condition: service_healthy
 
 volumes:
   prometheus_data:
   alertmanager_data:
   grafana_data:
+  loki_data:
 

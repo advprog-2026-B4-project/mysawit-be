@@ -28,40 +28,9 @@ services:
       retries: 3
       start_period: 30s
 
-  alertmanager:
-    image: prom/alertmanager:v0.27.0
-    restart: unless-stopped
-    environment:
-      DISCORD_WEBHOOK_URL_CRITICAL: ${DISCORD_WEBHOOK_URL_CRITICAL:-}
-      DISCORD_WEBHOOK_URL_WARNING: ${DISCORD_WEBHOOK_URL_WARNING:-}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        if [ -n "$$DISCORD_WEBHOOK_URL_CRITICAL" ]; then
-          sed \
-            -e "s|\$${DISCORD_WEBHOOK_URL_CRITICAL}|$$DISCORD_WEBHOOK_URL_CRITICAL|g" \
-            -e "s|\$${DISCORD_WEBHOOK_URL_WARNING}|$$DISCORD_WEBHOOK_URL_WARNING|g" \
-            /etc/observability/alertmanager.yml > /tmp/alertmanager.yml
-        else
-          printf 'route:\n  receiver: blackhole\nreceivers:\n  - name: blackhole\n' > /tmp/alertmanager.yml
-        fi
-        exec /bin/alertmanager \
-          --config.file=/tmp/alertmanager.yml \
-          --storage.path=/alertmanager \
-          --web.listen-address=0.0.0.0:9093
-    volumes:
-      - .:/etc/observability:ro
-      - alertmanager_data:/alertmanager
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:9093/-/healthy"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    depends_on:
-      prometheus:
-        condition: service_healthy
+  # ── alertmanager disabled until Discord webhooks configured ───────────────
+  #  alertmanager:
+  #    ...
 
   # ── loki + alloy disabled until bind mount issue resolved ─────────────────
   #  loki:
@@ -95,5 +64,4 @@ services:
 
 volumes:
   prometheus_data:
-  alertmanager_data:
   grafana_data:

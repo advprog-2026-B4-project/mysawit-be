@@ -4,10 +4,10 @@ global:
   external_labels:
     monitor: mysawit-prod
 
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ['alertmanager:9093']
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
 
 rule_files:
   - /etc/prometheus/alert_rules.yml

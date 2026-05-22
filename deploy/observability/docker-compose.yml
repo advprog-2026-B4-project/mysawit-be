@@ -9,10 +9,14 @@ services:
       - /bin/sh
       - -c
       - |
+        set -x
         sed \
-          -e "s|\$${BACKEND_HOST_MAIN}|$$BACKEND_HOST_MAIN|g" \
-          -e "s|\$${BACKEND_HOST_STAGING}|$$BACKEND_HOST_STAGING|g" \
+          -e "s|BACKEND_HOST_MAIN_PLACEHOLDER|$${BACKEND_HOST_MAIN:-mysawit-be-main}|g" \
+          -e "s|BACKEND_HOST_STAGING_PLACEHOLDER|$${BACKEND_HOST_STAGING:-mysawit-be-staging}|g" \
           /etc/prometheus/prometheus.tmpl > /tmp/prometheus.yml
+        echo "=== Generated config ==="
+        cat /tmp/prometheus.yml
+        echo "=== End config ==="
         exec /bin/prometheus \
           --config.file=/tmp/prometheus.yml \
           --storage.tsdb.path=/prometheus \

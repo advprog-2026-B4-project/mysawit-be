@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.adapter;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletBalanceDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTransactionDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.port.out.WalletRepositoryPort;
@@ -42,14 +43,15 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 			throw new IllegalArgumentException("Credit amount must be positive");
 		}
 
+		Money moneyAmount = Money.of(amount);
 		WalletEntity wallet = findOrCreateWallet(userId);
-		wallet.setBalance(wallet.getBalance() + amount);
+		wallet.setBalance(wallet.getBalance().add(moneyAmount));
 		WalletEntity savedWallet = walletJpaRepository.save(wallet);
 
 		WalletTransactionEntity transaction = WalletTransactionEntity.builder()
 				.userId(userId)
 				.payrollId(payrollId)
-				.amount(amount)
+				.amount(moneyAmount)
 				.type(CREDIT_TYPE)
 				.build();
 		walletTransactionJpaRepository.save(transaction);
@@ -65,17 +67,18 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 			throw new IllegalArgumentException("Debit amount must be positive");
 		}
 
+		Money moneyAmount = Money.of(amount);
 		WalletEntity wallet = findOrCreateWallet(userId);
-		if (wallet.getBalance() < amount) {
+		if (wallet.getBalance().isLessThan(moneyAmount)) {
 			throw new IllegalStateException("Insufficient admin wallet balance");
 		}
-		wallet.setBalance(wallet.getBalance() - amount);
+		wallet.setBalance(wallet.getBalance().subtract(moneyAmount));
 		WalletEntity savedWallet = walletJpaRepository.save(wallet);
 
 		WalletTransactionEntity transaction = WalletTransactionEntity.builder()
 				.userId(userId)
 				.payrollId(payrollId)
-				.amount(amount)
+				.amount(moneyAmount)
 				.type(DEBIT_TYPE)
 				.build();
 		walletTransactionJpaRepository.save(transaction);
@@ -102,14 +105,15 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 			return walletMapper.toBalanceDto(findOrCreateWallet(userId));
 		}
 
+		Money moneyAmount = Money.of(amount);
 		WalletEntity wallet = findOrCreateWallet(userId);
-		wallet.setBalance(wallet.getBalance() + amount);
+		wallet.setBalance(wallet.getBalance().add(moneyAmount));
 		WalletEntity savedWallet = walletJpaRepository.save(wallet);
 
 		WalletTransactionEntity transaction = WalletTransactionEntity.builder()
 				.userId(userId)
 				.payrollId(null)
-				.amount(amount)
+				.amount(moneyAmount)
 				.type(CREDIT_TYPE)
 				.reference(reference)
 				.build();
@@ -135,7 +139,7 @@ public class WalletRepositoryAdapter implements WalletRepositoryPort {
 				.orElseGet(() -> walletJpaRepository.save(
 						WalletEntity.builder()
 								.userId(userId)
-								.balance(0L)
+								.balance(Money.ZERO)
 								.build()
 				));
 	}

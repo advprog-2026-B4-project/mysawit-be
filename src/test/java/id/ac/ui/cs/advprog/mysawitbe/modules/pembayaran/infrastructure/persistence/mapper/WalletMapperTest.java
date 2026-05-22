@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.mapper;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletBalanceDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.application.dto.WalletTransactionDTO;
 import id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence.WalletEntity;
@@ -21,7 +22,7 @@ class WalletMapperTest {
     private WalletEntity sampleWalletEntity() {
         return WalletEntity.builder()
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
-                .balance(1500000)
+                .balance(Money.of(1500000))
                 .updatedAt(LocalDateTime.of(2024, 6, 15, 14, 30, 0))
                 .build();
     }
@@ -32,7 +33,7 @@ class WalletMapperTest {
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
                 .payrollId(UUID.fromString("33333333-3333-3333-3333-333333333333"))
                 .reference("MID-REF-123")
-                .amount(500000)
+                .amount(Money.of(500000))
                 .type("CREDIT")
                 .createdAt(LocalDateTime.of(2024, 6, 15, 10, 0, 0))
                 .build();
@@ -50,7 +51,7 @@ class WalletMapperTest {
         WalletBalanceDTO dto = mapper.toBalanceDto(entity);
 
         assertEquals(entity.getUserId(), dto.userId());
-        assertEquals(entity.getBalance(), dto.balance());
+        assertEquals(entity.getBalance().amountSmallestUnit(), dto.balance());
         assertEquals(entity.getUpdatedAt(), dto.lastUpdated());
     }
 
@@ -58,7 +59,7 @@ class WalletMapperTest {
     void toBalanceDto_mapsEntityWithZeroBalance() {
         WalletEntity entity = WalletEntity.builder()
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
-                .balance(0)
+                .balance(Money.ZERO)
                 .updatedAt(LocalDateTime.now())
                 .build();
 
@@ -76,7 +77,7 @@ class WalletMapperTest {
         assertEquals(entity.getTransactionId(), dto.transactionId());
         assertEquals(entity.getUserId(), dto.userId());
         assertEquals(entity.getPayrollId(), dto.payrollId());
-        assertEquals(entity.getAmount(), dto.amount());
+        assertEquals(entity.getAmount().amountSmallestUnit(), dto.amount());
         assertEquals(entity.getType(), dto.type());
         assertEquals(entity.getReference(), dto.reference());
         assertEquals(entity.getCreatedAt(), dto.createdAt());
@@ -110,7 +111,7 @@ class WalletMapperTest {
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
                 .payrollId(UUID.fromString("55555555-5555-5555-5555-555555555555"))
                 .reference("MID-REF-456")
-                .amount(-100000)
+                .amount(Money.of(-100000))
                 .type("DEBIT")
                 .createdAt(LocalDateTime.of(2024, 6, 16, 11, 0, 0))
                 .build();
@@ -135,7 +136,7 @@ class WalletMapperTest {
     void toBalanceDto_mapsEntityWithNullUpdatedAt() {
         WalletEntity entity = WalletEntity.builder()
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
-                .balance(500000)
+                .balance(Money.of(500000))
                 .updatedAt(null)
                 .build();
 
@@ -143,14 +144,14 @@ class WalletMapperTest {
 
         assertNull(dto.lastUpdated());
         assertEquals(entity.getUserId(), dto.userId());
-        assertEquals(entity.getBalance(), dto.balance());
+        assertEquals(entity.getBalance().amountSmallestUnit(), dto.balance());
     }
 
     @Test
     void toBalanceDto_mapsEntityWithMaxBalance() {
         WalletEntity entity = WalletEntity.builder()
                 .userId(UUID.fromString("11111111-1111-1111-1111-111111111111"))
-                .balance(Integer.MAX_VALUE)
+                .balance(Money.of(Integer.MAX_VALUE))
                 .updatedAt(LocalDateTime.now())
                 .build();
 

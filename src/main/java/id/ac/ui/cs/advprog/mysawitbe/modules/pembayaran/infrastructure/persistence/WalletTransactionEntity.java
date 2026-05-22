@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -40,7 +41,7 @@ public class WalletTransactionEntity {
 	private String reference;
 
 	@Column(name = "amount", nullable = false)
-	private long amount;
+	private Money amount;
 
 	@Column(name = "type", nullable = false, length = 32)
 	private String type;

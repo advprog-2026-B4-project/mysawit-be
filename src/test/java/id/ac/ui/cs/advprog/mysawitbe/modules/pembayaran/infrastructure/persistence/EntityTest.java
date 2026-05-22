@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.mysawitbe.modules.pembayaran.infrastructure.persistence;
 
+import id.ac.ui.cs.advprog.mysawitbe.common.domain.Money;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,16 +17,16 @@ class EntityTest {
         LocalDateTime now = LocalDateTime.now();
         
         entity.setUserId(userId);
-        entity.setBalance(1000);
+        entity.setBalance(Money.of(1000));
         entity.setUpdatedAt(now);
-        
+
         assertEquals(userId, entity.getUserId());
-        assertEquals(1000, entity.getBalance());
+        assertEquals(Money.of(1000), entity.getBalance());
         assertEquals(now, entity.getUpdatedAt());
 
         WalletEntity entity2 = WalletEntity.builder()
                 .userId(userId)
-                .balance(1000)
+                .balance(Money.of(1000))
                 .updatedAt(now)
                 .build();
         assertNotNull(entity2.toString());
@@ -48,15 +49,15 @@ class EntityTest {
         entity.setUserId(userId);
         entity.setPayrollId(payrollId);
         entity.setReference("ref");
-        entity.setAmount(100);
+        entity.setAmount(Money.of(100));
         entity.setType("CREDIT");
         entity.setCreatedAt(now);
-        
+
         assertEquals(id, entity.getTransactionId());
         assertEquals(userId, entity.getUserId());
         assertEquals(payrollId, entity.getPayrollId());
         assertEquals("ref", entity.getReference());
-        assertEquals(100, entity.getAmount());
+        assertEquals(Money.of(100), entity.getAmount());
         assertEquals("CREDIT", entity.getType());
         assertEquals(now, entity.getCreatedAt());
 
@@ -65,7 +66,7 @@ class EntityTest {
                 .userId(userId)
                 .payrollId(payrollId)
                 .reference("ref")
-                .amount(100)
+                .amount(Money.of(100))
                 .type("CREDIT")
                 .createdAt(now)
                 .build();

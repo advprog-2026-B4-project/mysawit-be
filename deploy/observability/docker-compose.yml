@@ -9,49 +9,10 @@ services:
       - /bin/sh
       - -c
       - |
-        MAIN=$${BACKEND_HOST_MAIN:-mysawit-be-main}
-        STAGING=$${BACKEND_HOST_STAGING:-mysawit-be-staging}
-        cat > /tmp/prometheus.yml << YMLEOF
-        global:
-          scrape_interval: 15s
-          evaluation_interval: 15s
-          external_labels:
-            monitor: mysawit-prod
-
-        rule_files:
-          - /etc/prometheus/alert_rules.yml
-
-        scrape_configs:
-          - job_name: mysawit-be-main
-            metrics_path: /actuator/prometheus
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['$${MAIN}:9090']
-                labels:
-                  app: mysawit-be
-                  env: main
-            relabel_configs:
-              - source_labels: [__address__]
-                target_label: instance
-                replacement: mysawit-main
-
-          - job_name: mysawit-be-staging
-            metrics_path: /actuator/prometheus
-            scrape_interval: 15s
-            static_configs:
-              - targets: ['$${STAGING}:9090']
-                labels:
-                  app: mysawit-be
-                  env: staging
-            relabel_configs:
-              - source_labels: [__address__]
-                target_label: instance
-                replacement: mysawit-staging
-
-          - job_name: prometheus
-            static_configs:
-              - targets: ['localhost:9090']
-        YMLEOF
+        sed \
+          -e "s/BACKEND_HOST_MAIN_PLACEHOLDER/$${BACKEND_HOST_MAIN}/g" \
+          -e "s/BACKEND_HOST_STAGING_PLACEHOLDER/$${BACKEND_HOST_STAGING}/g" \
+          /etc/prometheus/prometheus.yml.tmpl > /tmp/prometheus.yml
         echo "=== Config ===" && cat /tmp/prometheus.yml
         exec /bin/prometheus \
           --config.file=/tmp/prometheus.yml \
@@ -59,6 +20,7 @@ services:
           --storage.tsdb.retention.time=30d \
           --web.enable-lifecycle
     volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml.tmpl:ro
       - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     networks:

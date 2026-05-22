@@ -8,8 +8,7 @@ services:
     entrypoint: ["/bin/sh", "/tmp/prometheus-entrypoint.sh"]
     volumes:
       - ./prometheus-entrypoint.sh:/tmp/prometheus-entrypoint.sh:ro
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - ./prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
     networks:
       - coolify

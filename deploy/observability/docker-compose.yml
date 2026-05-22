@@ -34,7 +34,8 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_WEBHOOK_URL_CRITICAL: ${DISCORD_WEBHOOK_URL_CRITICAL}
-      DISCORD_WEBHOOK_URL_WARNING: ${DISCORD_WEBHOOK_URL_WARNING:-${DISCORD_WEBHOOK_URL_CRITICAL}}
+      # Set to a different webhook for warnings, or same as CRITICAL to reuse it
+      DISCORD_WEBHOOK_URL_WARNING: ${DISCORD_WEBHOOK_URL_WARNING}
     entrypoint:
       - /bin/sh
       - -c

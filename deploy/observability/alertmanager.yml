@@ -10,7 +10,7 @@ route:
   repeat_interval: 1h                   # re-notify if still firing after 1h
 
   routes:
-    # Critical alerts → Discord + Telegram simultaneously
+    # Critical alerts → Discord
     - matchers:
         - severity = "critical"
       receiver: 'multi-critical'

@@ -18,7 +18,10 @@ USER ${USER_NAME}
 WORKDIR /opt/mysawit
 COPY --from=builder --chown=${USER_UID}:${USER_GID} /src/mysawit/build/libs/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8080 9090
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=90s --retries=3 \
+  CMD wget -qO /dev/null http://localhost:9090/actuator/health/liveness || exit 1
 
 ENTRYPOINT ["java"]
 CMD ["-jar", "app.jar"]

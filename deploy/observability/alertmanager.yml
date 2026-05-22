@@ -1,0 +1,69 @@
+global:
+  resolve_timeout: 5m
+
+# ── Routing tree ───────────────────────────────────────────────────────────────
+route:
+  receiver: 'discord-critical'          # default catch-all
+  group_by: ['alertname', 'env']        # one thread per alert+env combination
+  group_wait: 30s                       # wait before sending first notification
+  group_interval: 5m                    # how long to wait before re-grouping
+  repeat_interval: 1h                   # re-notify if still firing after 1h
+
+  routes:
+    # Critical alerts → Discord
+    - matchers:
+        - severity = "critical"
+      receiver: 'multi-critical'
+      continue: false
+
+    # Warning / ops alerts → Discord only (less noisy channel)
+    - matchers:
+        - severity = "warning"
+      receiver: 'discord-warning'
+      continue: false
+
+# ── Inhibit rules ──────────────────────────────────────────────────────────────
+inhibit_rules:
+  # If the backend is completely down, suppress latency/error-rate alerts
+  # (they are a consequence, not an independent incident)
+  - source_matchers:
+      - alertname = "MySawitBackendDown"
+    target_matchers:
+      - alertname =~ "PanenCreateLatencyHigh|PanenApproveLatencyHigh|HighServerErrorRate"
+    equal: ['env']
+
+# ── Receivers ──────────────────────────────────────────────────────────────────
+receivers:
+
+  - name: 'multi-critical'
+    discord_configs:
+      - webhook_url: '${DISCORD_WEBHOOK_URL_CRITICAL}'
+        title: '🔴 [MySawit {{ .GroupLabels.env }}] {{ .GroupLabels.alertname }}'
+        message: |
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Detail:** {{ .Annotations.description }}
+          **Runbook:** {{ .Annotations.runbook }}
+          **Since:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          {{ end }}
+
+  # Non-critical Discord channel
+  - name: 'discord-critical'
+    discord_configs:
+      - webhook_url: '${DISCORD_WEBHOOK_URL_CRITICAL}'
+        title: '🔴 [MySawit {{ .GroupLabels.env }}] {{ .GroupLabels.alertname }}'
+        message: |
+          {{ range .Alerts }}
+          **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'discord-warning'
+    discord_configs:
+      - webhook_url: '${DISCORD_WEBHOOK_URL_WARNING}'
+        title: '⚠️ [MySawit {{ .GroupLabels.env }}] {{ .GroupLabels.alertname }}'
+        message: |
+          {{ range .Alerts }}
+          **{{ .Annotations.summary }}**
+          {{ .Annotations.description }}
+          {{ end }}

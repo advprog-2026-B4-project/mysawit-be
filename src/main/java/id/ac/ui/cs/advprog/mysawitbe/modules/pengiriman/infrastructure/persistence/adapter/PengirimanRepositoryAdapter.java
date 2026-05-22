@@ -1,0 +1,162 @@
+package id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.adapter;
+
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.dto.PengirimanPageDTO;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.application.port.out.PengirimanRepositoryPort;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.domain.PengirimanStatus;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaEntity;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.PengirimanJpaRepository;
+import id.ac.ui.cs.advprog.mysawitbe.modules.pengiriman.infrastructure.persistence.mapper.PengirimanMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class PengirimanRepositoryAdapter implements PengirimanRepositoryPort {
+
+    private static final List<String> ACTIVE_STATUSES = List.of(
+            PengirimanStatus.ASSIGNED.name(),
+            PengirimanStatus.IN_TRANSIT.name(),
+            PengirimanStatus.TIBA.name()
+    );
+
+    private final PengirimanJpaRepository jpaRepository;
+    private final PengirimanMapper mapper;
+
+    @Override
+    public PengirimanDTO save(PengirimanDTO pengirimanDTO) {
+        if (pengirimanDTO.pengirimanId() != null) {
+            return jpaRepository.findById(pengirimanDTO.pengirimanId())
+                    .map(existing -> updateExisting(existing, pengirimanDTO))
+                    .map(jpaRepository::save)
+                    .map(mapper::toDto)
+                    .orElseGet(() -> saveNew(pengirimanDTO));
+        }
+        return saveNew(pengirimanDTO);
+    }
+
+    private PengirimanDTO saveNew(PengirimanDTO pengirimanDTO) {
+        PengirimanJpaEntity entity = mapper.toEntity(pengirimanDTO);
+        return mapper.toDto(jpaRepository.save(entity));
+    }
+
+    private PengirimanJpaEntity updateExisting(PengirimanJpaEntity existing, PengirimanDTO pengirimanDTO) {
+        existing.setSupirId(pengirimanDTO.supirId());
+        existing.setMandorId(pengirimanDTO.mandorId());
+        existing.setStatus(pengirimanDTO.status());
+        existing.setTotalWeight(pengirimanDTO.totalWeight());
+        existing.setAcceptedWeight(pengirimanDTO.acceptedWeight());
+        existing.setStatusReason(pengirimanDTO.statusReason());
+        existing.setTimestamp(pengirimanDTO.timestamp());
+        return existing;
+    }
+
+    @Override
+    public PengirimanDTO findById(UUID pengirimanId) {
+        return jpaRepository.findById(pengirimanId)
+                .map(mapper::toDto)
+                .orElse(null);
+    }
+
+    @Override
+    public List<UUID> findAssignedPanenIds(List<UUID> panenIds) {
+        if (panenIds == null || panenIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findAssignedPanenIds(panenIds);
+    }
+
+    @Override
+    public List<PengirimanDTO> findBySupirId(UUID supirId, LocalDate startDate, LocalDate endDate) {
+        List<PengirimanJpaEntity> entities;
+
+        if (startDate != null && endDate != null) {
+            entities = jpaRepository.findBySupirIdAndTimestampBetweenOrderByTimestampDesc(
+                    supirId,
+                    startDate.atStartOfDay(),
+                    toEndOfDay(endDate)
+            );
+        } else if (startDate != null) {
+            entities = jpaRepository.findBySupirIdAndTimestampGreaterThanEqualOrderByTimestampDesc(
+                    supirId,
+                    startDate.atStartOfDay()
+            );
+        } else if (endDate != null) {
+            entities = jpaRepository.findBySupirIdAndTimestampLessThanEqualOrderByTimestampDesc(
+                    supirId,
+                    toEndOfDay(endDate)
+            );
+        } else {
+            entities = jpaRepository.findBySupirIdOrderByTimestampDesc(supirId);
+        }
+
+        return mapper.toDtoList(entities);
+    }
+
+    @Override
+    public List<PengirimanDTO> findActiveByMandorId(UUID mandorId) {
+        return mapper.toDtoList(
+                jpaRepository.findByMandorIdAndStatusInOrderByTimestampDesc(mandorId, ACTIVE_STATUSES)
+        );
+    }
+
+    @Override
+    public List<PengirimanDTO> findByMandorIdAndSupirId(UUID mandorId, UUID supirId) {
+        return mapper.toDtoList(jpaRepository.findByMandorIdAndSupirIdOrderByTimestampDesc(mandorId, supirId));
+    }
+
+    @Override
+    public List<PengirimanDTO> findApprovedByMandorForAdmin(String mandorName, LocalDate date) {
+        List<PengirimanJpaEntity> entities;
+        if (date == null) {
+            entities = jpaRepository.findByStatusOrderByTimestampDesc(PengirimanStatus.APPROVED_MANDOR.name());
+        } else {
+            entities = jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
+                    PengirimanStatus.APPROVED_MANDOR.name(),
+                    date.atStartOfDay(),
+                    toEndOfDay(date)
+            );
+        }
+        return mapper.toDtoList(entities);
+    }
+
+    @Override
+    public PengirimanPageDTO findApprovedByMandorForAdminPaginated(LocalDate date, int page, int size) {
+        String status = PengirimanStatus.APPROVED_MANDOR.name();
+        PageRequest pageable = PageRequest.of(page, size);
+
+        Page<PengirimanJpaEntity> entityPage;
+        if (date == null) {
+            entityPage = jpaRepository.findByStatusOrderByTimestampDesc(status, pageable);
+        } else {
+            entityPage = jpaRepository.findByStatusAndTimestampBetweenOrderByTimestampDesc(
+                    status,
+                    date.atStartOfDay(),
+                    toEndOfDay(date),
+                    pageable
+            );
+        }
+
+        List<PengirimanDTO> dtos = mapper.toDtoList(entityPage.getContent());
+        return new PengirimanPageDTO(
+                dtos,
+                page,
+                size,
+                entityPage.getTotalElements(),
+                entityPage.getTotalPages(),
+                entityPage.hasNext(),
+                entityPage.hasPrevious()
+        );
+    }
+
+    private LocalDateTime toEndOfDay(LocalDate date) {
+        return date.plusDays(1).atStartOfDay().minusNanos(1);
+    }
+}

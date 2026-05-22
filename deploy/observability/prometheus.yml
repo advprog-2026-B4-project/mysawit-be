@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: mysawit-prod
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # ── main (production) branch ──────────────────────────────────────────────
+  - job_name: 'mysawit-be-main'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['${BACKEND_HOST_MAIN}:9090']
+        labels:
+          app: mysawit-be
+          env: main
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mysawit-main'
+
+  # ── staging branch ────────────────────────────────────────────────────────
+  - job_name: 'mysawit-be-staging'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['${BACKEND_HOST_STAGING}:9090']
+        labels:
+          app: mysawit-be
+          env: staging
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mysawit-staging'
+
+  # ── Prometheus self-monitoring ────────────────────────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

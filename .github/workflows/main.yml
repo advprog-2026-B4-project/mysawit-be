@@ -4,7 +4,9 @@ on:
   push:
   pull_request:
 
-permissions: read-all
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   ci:
@@ -13,5 +15,6 @@ jobs:
 
   cd:
     needs: ci
+    if: github.event_name == 'push'
     uses: ./.github/workflows/cd.yml
     secrets: inherit
